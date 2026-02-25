@@ -221,7 +221,7 @@ local titleLabel = Instance.new("TextLabel")
 titleLabel.Size         = UDim2.new(1, -10, 1, 0)
 titleLabel.Position     = UDim2.new(0, 10, 0, 0)
 titleLabel.BackgroundTransparency = 1
-titleLabel.Font         = Enum.Font.GothamBold
+titleLabel.Font         = Enum.Font.Highway
 titleLabel.Text         = 'Lethal<font color="#FF8888">.xyz</font>  <font color="#FFCCCC" size="11">Rage Edition v2</font>'
 titleLabel.RichText     = true
 titleLabel.TextColor3   = Color3.fromRGB(255, 255, 255)
@@ -330,7 +330,7 @@ local notifText = Instance.new("TextLabel")
 notifText.Size           = UDim2.new(1, -14, 1, 0)
 notifText.Position       = UDim2.new(0, 11, 0, 0)
 notifText.BackgroundTransparency = 1
-notifText.Font           = Enum.Font.GothamMedium
+notifText.Font           = Enum.Font.Gotham
 notifText.TextColor3     = Color3.fromRGB(255, 200, 200)
 notifText.TextSize       = 12
 notifText.TextXAlignment = Enum.TextXAlignment.Left
@@ -468,7 +468,7 @@ function library:addTab(name, icon)
     tabBtn.Size             = UDim2.new(1, 0, 0, 30)
     tabBtn.BackgroundColor3 = Color3.fromRGB(25, 6, 6)
     tabBtn.BorderSizePixel  = 0
-    tabBtn.Font             = Enum.Font.GothamMedium
+    tabBtn.Font             = Enum.Font.Gotham
     tabBtn.Text             = (icon and icon.." " or "")..name
     tabBtn.TextColor3       = Color3.fromRGB(150, 80, 80)
     tabBtn.TextSize         = 12
@@ -544,7 +544,7 @@ function library:addTab(name, icon)
         groupTitle.Size              = UDim2.new(1, -10, 0, 22)
         groupTitle.Position          = UDim2.new(0, 8, 0, 2)
         groupTitle.BackgroundTransparency = 1
-        groupTitle.Font              = Enum.Font.GothamBold
+        groupTitle.Font              = Enum.Font.Highway
         groupTitle.Text              = groupname:upper()
         groupTitle.TextColor3        = Color3.fromRGB(220, 80, 80)
         groupTitle.TextSize          = 11
@@ -733,7 +733,7 @@ function library:addTab(name, icon)
             btn.Size                 = UDim2.new(1, 0, 0, 26)
             btn.BackgroundColor3     = Color3.fromRGB(40, 10, 10)
             btn.BorderSizePixel      = 0
-            btn.Font                 = Enum.Font.GothamMedium
+            btn.Font                 = Enum.Font.Gotham
             btn.Text                 = args.text
             btn.TextColor3           = Color3.fromRGB(220, 160, 160)
             btn.TextSize             = 12
@@ -1235,7 +1235,7 @@ local function createESP(plr)
     local nameLbl = Instance.new("TextLabel")
     nameLbl.Size                = UDim2.new(1, 0, 0.5, 0)
     nameLbl.BackgroundTransparency = 1
-    nameLbl.Font                = Enum.Font.GothamBold
+    nameLbl.Font                = Enum.Font.Highway
     nameLbl.Text                = plr.Name
     nameLbl.TextColor3          = Color3.fromRGB(255, 80, 80)
     nameLbl.TextSize            = 12
