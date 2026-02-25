@@ -31,16 +31,12 @@ blacklisted = {Enum.KeyCode.W,Enum.KeyCode.A,Enum.KeyCode.S,Enum.KeyCode.D,Enum.
 flyEnabled = false;
 flying = false;
 flySpeed = 50;
-flyMethod = "V4"; -- "V3" or "V4"
 bodyVelocity = nil;
 bodyGyro = nil;
 flyConnection = nil;
 stateChangedConnection = nil;
 animationConnection = nil;
 noclipConnection = nil;
-nowe = false;
-tpwalking = false;
-speeds = 1;
 lastLookDirection = Vector3.new(0,0,-1);
 rotationSpeed = 0.03;
 originalCollisionStates = {};
@@ -61,8 +57,6 @@ gradient.Parent = menu.bg.bg
 
 local tabholder = menu.bg.bg.bg.bg.main.group
 local tabviewer = menu.bg.bg.bg.bg.tabbuttons
-
-
 
 inputService.InputEnded:Connect(function(key)
     if key.KeyCode == Enum.KeyCode.RightShift then
@@ -89,6 +83,18 @@ local keyNames = {
     [Enum.KeyCode.Slash] = '/';
     [Enum.KeyCode.BackSlash] = '\\';
     [Enum.KeyCode.Question] = '?';
+    [Enum.KeyCode.F] = 'F';
+    [Enum.KeyCode.G] = 'G';
+    [Enum.KeyCode.H] = 'H';
+    [Enum.KeyCode.J] = 'J';
+    [Enum.KeyCode.K] = 'K';
+    [Enum.KeyCode.L] = 'L';
+    [Enum.KeyCode.X] = 'X';
+    [Enum.KeyCode.C] = 'C';
+    [Enum.KeyCode.V] = 'V';
+    [Enum.KeyCode.B] = 'B';
+    [Enum.KeyCode.N] = 'N';
+    [Enum.KeyCode.M] = 'M';
     [Enum.UserInputType.MouseButton1] = 'MB1';
     [Enum.UserInputType.MouseButton2] = 'MB2';
     [Enum.UserInputType.MouseButton3] = 'MB3';
@@ -243,7 +249,7 @@ local function enableNoclip()
     storeOriginalCollisions()
     
     library.noclipConnection = runService.Stepped:Connect(function()
-        if not library.flyEnabled or not library.flying then return end
+        if not library.noclipEnabled then return end
         local char = localPlayer.Character
         if char then
             for _, v in pairs(char:GetDescendants()) do
@@ -288,7 +294,7 @@ local function disableNoclip()
     library.originalCollisionStates = {}
 end
 
-function startFlyV4()
+function startFly()
     local char = getCharacter()
     local root = getRootPart()
     if not char or not root or not library.flyEnabled then return end
@@ -356,215 +362,16 @@ function startFlyV4()
             root.AssemblyLinearVelocity = Vector3.zero
         end
     end)
-    enableNoclip()
-end
-
-function startFlyV3()
-    if not library.flyEnabled then return end
-    library.flying = true
-    
-    if library.nowe == true then
-        library.nowe = false
-
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing,true)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown,true)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying,true)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall,true)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp,true)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping,true)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed,true)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics,true)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding,true)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll,true)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running,true)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics,true)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated,true)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.StrafingNoPhysics,true)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming,true)
-        localPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
-    else 
-        library.nowe = true
-
-        for i = 1, library.speeds do
-            spawn(function()
-                local hb = runService.Heartbeat	
-                library.tpwalking = true
-                local chr = localPlayer.Character
-                local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
-                while library.tpwalking and hb:Wait() and chr and hum and hum.Parent do
-                    if hum.MoveDirection.Magnitude > 0 then
-                        chr:TranslateBy(hum.MoveDirection)
-                    end
-                end
-            end)
-        end
-        
-        localPlayer.Character.Animate.Disabled = true
-        local Char = localPlayer.Character
-        local Hum = Char:FindFirstChildOfClass("Humanoid") or Char:FindFirstChildOfClass("AnimationController")
-
-        for i,v in next, Hum:GetPlayingAnimationTracks() do
-            v:AdjustSpeed(0)
-        end
-        
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing,false)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown,false)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying,false)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall,false)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp,false)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping,false)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed,false)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics,false)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding,false)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll,false)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running,false)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics,false)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated,false)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.StrafingNoPhysics,false)
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming,false)
-        localPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
-    end
-
-    if localPlayer.Character:FindFirstChildOfClass("Humanoid").RigType == Enum.HumanoidRigType.R6 then
-        local plr = localPlayer
-        local torso = plr.Character.Torso
-        local ctrl = {f = 0, b = 0, l = 0, r = 0}
-        local lastctrl = {f = 0, b = 0, l = 0, r = 0}
-        local maxspeed = library.flySpeed
-        local speed_v3 = 0
-
-        local bg = Instance.new("BodyGyro", torso)
-        bg.P = 9e4
-        bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
-        bg.cframe = torso.CFrame
-        local bv = Instance.new("BodyVelocity", torso)
-        bv.velocity = Vector3.new(0,0.1,0)
-        bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
-        
-        if library.nowe == true then
-            plr.Character.Humanoid.PlatformStand = true
-        end
-        
-        spawn(function()
-            while library.nowe == true or localPlayer.Character.Humanoid.Health == 0 do
-                wait()
-
-                if ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0 then
-                    speed_v3 = speed_v3+.5+(speed_v3/maxspeed)
-                    if speed_v3 > maxspeed then
-                        speed_v3 = maxspeed
-                    end
-                elseif not (ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0) and speed_v3 ~= 0 then
-                    speed_v3 = speed_v3-1
-                    if speed_v3 < 0 then
-                        speed_v3 = 0
-                    end
-                end
-                
-                if (ctrl.l + ctrl.r) ~= 0 or (ctrl.f + ctrl.b) ~= 0 then
-                    bv.velocity = ((workspace.CurrentCamera.CoordinateFrame.lookVector * (ctrl.f+ctrl.b)) + ((workspace.CurrentCamera.CoordinateFrame * CFrame.new(ctrl.l+ctrl.r,(ctrl.f+ctrl.b)*.2,0).p) - workspace.CurrentCamera.CoordinateFrame.p))*speed_v3
-                    lastctrl = {f = ctrl.f, b = ctrl.b, l = ctrl.l, r = ctrl.r}
-                elseif (ctrl.l + ctrl.r) == 0 and (ctrl.f + ctrl.b) == 0 and speed_v3 ~= 0 then
-                    bv.velocity = ((workspace.CurrentCamera.CoordinateFrame.lookVector * (lastctrl.f+lastctrl.b)) + ((workspace.CurrentCamera.CoordinateFrame * CFrame.new(lastctrl.l+lastctrl.r,(lastctrl.f+lastctrl.b)*.2,0).p) - workspace.CurrentCamera.CoordinateFrame.p))*speed_v3
-                else
-                    bv.velocity = Vector3.new(0,0,0)
-                end
-                
-                bg.cframe = workspace.CurrentCamera.CoordinateFrame * CFrame.Angles(-math.rad((ctrl.f+ctrl.b)*50*speed_v3/maxspeed),0,0)
-            end
-            
-            ctrl = {f = 0, b = 0, l = 0, r = 0}
-            lastctrl = {f = 0, b = 0, l = 0, r = 0}
-            speed_v3 = 0
-            bg:Destroy()
-            bv:Destroy()
-            plr.Character.Humanoid.PlatformStand = false
-            localPlayer.Character.Animate.Disabled = false
-            library.tpwalking = false
-        end)
-
-    else
-        local plr = localPlayer
-        local UpperTorso = plr.Character.UpperTorso
-        local ctrl = {f = 0, b = 0, l = 0, r = 0}
-        local lastctrl = {f = 0, b = 0, l = 0, r = 0}
-        local maxspeed = library.flySpeed
-        local speed_v3 = 0
-
-        local bg = Instance.new("BodyGyro", UpperTorso)
-        bg.P = 9e4
-        bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
-        bg.cframe = UpperTorso.CFrame
-        local bv = Instance.new("BodyVelocity", UpperTorso)
-        bv.velocity = Vector3.new(0,0.1,0)
-        bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
-        
-        if library.nowe == true then
-            plr.Character.Humanoid.PlatformStand = true
-        end
-        
-        spawn(function()
-            while library.nowe == true or localPlayer.Character.Humanoid.Health == 0 do
-                wait()
-
-                if ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0 then
-                    speed_v3 = speed_v3+.5+(speed_v3/maxspeed)
-                    if speed_v3 > maxspeed then
-                        speed_v3 = maxspeed
-                    end
-                elseif not (ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0) and speed_v3 ~= 0 then
-                    speed_v3 = speed_v3-1
-                    if speed_v3 < 0 then
-                        speed_v3 = 0
-                    end
-                end
-                
-                if (ctrl.l + ctrl.r) ~= 0 or (ctrl.f + ctrl.b) ~= 0 then
-                    bv.velocity = ((workspace.CurrentCamera.CoordinateFrame.lookVector * (ctrl.f+ctrl.b)) + ((workspace.CurrentCamera.CoordinateFrame * CFrame.new(ctrl.l+ctrl.r,(ctrl.f+ctrl.b)*.2,0).p) - workspace.CurrentCamera.CoordinateFrame.p))*speed_v3
-                    lastctrl = {f = ctrl.f, b = ctrl.b, l = ctrl.l, r = ctrl.r}
-                elseif (ctrl.l + ctrl.r) == 0 and (ctrl.f + ctrl.b) == 0 and speed_v3 ~= 0 then
-                    bv.velocity = ((workspace.CurrentCamera.CoordinateFrame.lookVector * (lastctrl.f+lastctrl.b)) + ((workspace.CurrentCamera.CoordinateFrame * CFrame.new(lastctrl.l+lastctrl.r,(lastctrl.f+lastctrl.b)*.2,0).p) - workspace.CurrentCamera.CoordinateFrame.p))*speed_v3
-                else
-                    bv.velocity = Vector3.new(0,0,0)
-                end
-
-                bg.cframe = workspace.CurrentCamera.CoordinateFrame * CFrame.Angles(-math.rad((ctrl.f+ctrl.b)*50*speed_v3/maxspeed),0,0)
-            end
-            
-            ctrl = {f = 0, b = 0, l = 0, r = 0}
-            lastctrl = {f = 0, b = 0, l = 0, r = 0}
-            speed_v3 = 0
-            bg:Destroy()
-            bv:Destroy()
-            plr.Character.Humanoid.PlatformStand = false
-            localPlayer.Character.Animate.Disabled = false
-            library.tpwalking = false
-        end)
-    end
-    
-    enableNoclip()
-end
-
-function startFly()
-    if library.flyMethod == "V3" then
-        startFlyV3()
-    else
-        startFlyV4()
-    end
 end
 
 function stopFly()
     library.flying = false
-    library.nowe = false
-    library.tpwalking = false
     
     if library.flyConnection then library.flyConnection:Disconnect() library.flyConnection = nil end
     if library.bodyVelocity then library.bodyVelocity:Destroy() library.bodyVelocity = nil end
     if library.bodyGyro then library.bodyGyro:Destroy() library.bodyGyro = nil end
     if library.stateChangedConnection then library.stateChangedConnection:Disconnect() library.stateChangedConnection = nil end
     if library.animationConnection then library.animationConnection:Disconnect() library.animationConnection = nil end
-    
-    disableNoclip()
     
     local char = getCharacter()
     local humanoid = char and char:FindFirstChildOfClass("Humanoid")
@@ -611,18 +418,7 @@ end
 
 -- RAGE MODE FUNCTIONS
 local function enableRageMode()
-    -- Super speed
     library.flySpeed = 500
-    -- Noclip always on
-    if library.flyEnabled then
-        enableNoclip()
-    end
-    -- Anti-sit
-    local char = getCharacter()
-    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.PlatformStand = true
-    end
     library:notify("RAGE MODE ACTIVATED - SPEED: 500")
 end
 
@@ -631,7 +427,6 @@ local function disableRageMode()
     library:notify("Rage Mode Deactivated")
 end
 
--- RAGE FEATURES
 local function tpToMouse()
     local mousePos = mouse.Hit
     local root = getRootPart()
@@ -688,7 +483,7 @@ function library:addTab(name)
     local jigCount = 0
     local topStuff = 2000
   
-    function tab:createGroup(pos,groupname) -- newTab[pos == 0 and "left" or "right"] 
+    function tab:createGroup(pos,groupname)
         local groupbox = Instance.new("Frame")
         local grouper = Instance.new("Frame")
         local UIListLayout = Instance.new("UIListLayout")
@@ -911,234 +706,6 @@ function library:addTab(name)
     
                 updateValue(args.key or Enum.KeyCode.Unknown)
             end
-            function toggle:addColorpicker(args)
-                if not args.flag and args.text then args.flag = args.text end
-                if not args.flag then return warn("⚠️ incorrect arguments ⚠️") end
-                local colorpicker = Instance.new("Frame")
-                local mid = Instance.new("Frame")
-                local front = Instance.new("Frame")
-                local button2 = Instance.new("TextButton")
-                local colorFrame = Instance.new("Frame")
-                local colorFrame_2 = Instance.new("Frame")
-                local hueframe = Instance.new("Frame")
-                local main = Instance.new("Frame")
-                local hue = Instance.new("ImageLabel")
-                local pickerframe = Instance.new("Frame")
-                local main_2 = Instance.new("Frame")
-                local picker = Instance.new("ImageLabel")
-                local clr = Instance.new("Frame")
-                local copy = Instance.new("TextButton")
-
-                library.multiZindex -= 1
-                jigCount -= 1
-                topStuff -= 1 --args.second
-
-                colorpicker.Parent = toggleframe
-                colorpicker.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-                colorpicker.BorderColor3 = Color3.fromRGB(0, 0, 0)
-                colorpicker.BorderSizePixel = 3
-                colorpicker.Position = args.second and UDim2.new(0.720000029, 4, 0.272000015, 0) or UDim2.new(0.860000014, 4, 0.272000015, 0)
-                colorpicker.Size = UDim2.new(0, 20, 0, 10)
-                
-                mid.Name = "mid"
-                mid.Parent = colorpicker
-                mid.BackgroundColor3 = Color3.fromRGB(69, 23, 255)
-                mid.BorderColor3 = Color3.fromRGB(30,30,30)
-                mid.BorderSizePixel = 2
-                mid.Size = UDim2.new(1, 0, 1, 0)
-                
-                front.Name = "front"
-                front.Parent = mid
-                front.BackgroundColor3 = Color3.fromRGB(240, 142, 214)
-                front.BorderColor3 = Color3.fromRGB(0, 0, 0)
-                front.Size = UDim2.new(1, 0, 1, 0)
-                
-                button2.Name = "button2"
-                button2.Parent = front
-                button2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-                button2.BackgroundTransparency = 1.000
-                button2.Size = UDim2.new(1, 0, 1, 0)
-                button2.Text = ""
-                button2.Font = Enum.Font.SourceSans
-                button2.TextColor3 = Color3.fromRGB(0, 0, 0)
-                button2.TextSize = 14.000
-
-                colorFrame.Name = "colorFrame"
-                colorFrame.Parent = toggleframe
-                colorFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-                colorFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
-                colorFrame.BorderSizePixel = 2
-                colorFrame.Position = UDim2.new(0.101092957, 0, 0.75, 0)
-                colorFrame.Size = UDim2.new(0, 137, 0, 128)
-
-                colorFrame_2.Name = "colorFrame"
-                colorFrame_2.Parent = colorFrame
-                colorFrame_2.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-                colorFrame_2.BorderColor3 = Color3.fromRGB(60, 60, 60)
-                colorFrame_2.Size = UDim2.new(1, 0, 1, 0)
-
-                hueframe.Name = "hueframe"
-                hueframe.Parent = colorFrame_2
-                hueframe.Parent = colorFrame_2
-                hueframe.BackgroundColor3 = Color3.fromRGB(34, 34, 34)
-                hueframe.BorderColor3 = Color3.fromRGB(60, 60, 60)
-                hueframe.BorderSizePixel = 2
-                hueframe.Position = UDim2.new(-0.0930000022, 18, -0.0599999987, 30)
-                hueframe.Size = UDim2.new(0, 100, 0, 100)
-    
-                main.Name = "main"
-                main.Parent = hueframe
-                main.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
-                main.BorderColor3 = Color3.fromRGB(0, 0, 0)
-                main.Size = UDim2.new(0, 100, 0, 100)
-                main.ZIndex = 6
-    
-                picker.Name = "picker"
-                picker.Parent = main
-                picker.BackgroundColor3 = Color3.fromRGB(232, 0, 255)
-                picker.BorderColor3 = Color3.fromRGB(0, 0, 0)
-                picker.BorderSizePixel = 0
-                picker.Size = UDim2.new(0, 100, 0, 100)
-                picker.ZIndex = 104
-                picker.Image = "rbxassetid://2615689005"
-    
-                pickerframe.Name = "pickerframe"
-                pickerframe.Parent = colorFrame
-                pickerframe.BackgroundColor3 = Color3.fromRGB(34, 34, 34)
-                pickerframe.BorderColor3 = Color3.fromRGB(60, 60, 60)
-                pickerframe.BorderSizePixel = 2
-                pickerframe.Position = UDim2.new(0.711000025, 14, -0.0599999987, 30)
-                pickerframe.Size = UDim2.new(0, 20, 0, 100)
-    
-                main_2.Name = "main"
-                main_2.Parent = pickerframe
-                main_2.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
-                main_2.BorderColor3 = Color3.fromRGB(0, 0, 0)
-                main_2.Size = UDim2.new(0, 20, 0, 100)
-                main_2.ZIndex = 6
-    
-                hue.Name = "hue"
-                hue.Parent = main_2
-                hue.BackgroundColor3 = Color3.fromRGB(255, 0, 178)
-                hue.BorderColor3 = Color3.fromRGB(0, 0, 0)
-                hue.BorderSizePixel = 0
-                hue.Size = UDim2.new(0, 20, 0, 100)
-                hue.ZIndex = 104
-                hue.Image = "rbxassetid://2615692420"
-    
-                clr.Name = "clr"
-                clr.Parent = colorFrame
-                clr.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-                clr.BackgroundTransparency = 1.000
-                clr.BorderColor3 = Color3.fromRGB(60, 60, 60)
-                clr.BorderSizePixel = 2
-                clr.Position = UDim2.new(0.0280000009, 0, 0, 2)
-                clr.Size = UDim2.new(0, 129, 0, 14)
-                clr.ZIndex = 5
-    
-                copy.Name = "copy"
-                copy.Parent = clr
-                copy.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
-                copy.BackgroundTransparency = 1.000
-                copy.BorderSizePixel = 0
-                copy.Size = UDim2.new(0, 129, 0, 14)
-                copy.ZIndex = 5
-                copy.Font = Enum.Font.SourceSans
-                copy.Text = args.text or args.flag
-                copy.TextColor3 = Color3.fromRGB(100, 100, 100)
-                copy.TextSize = 14.000
-                copy.TextStrokeTransparency = 0.000
-
-                copy.MouseButton1Click:Connect(function() -- "  "..args.text or "  "..args.flag
-                    colorFrame.Visible = false
-                end)
-
-                button2.MouseButton1Click:Connect(function()
-                    colorFrame.Visible = not colorFrame.Visible
-                    mid.BorderColor3 = Color3.fromRGB(30,30,30)
-                end)
-
-                button2.MouseEnter:connect(function()
-                    mid.BorderColor3 = library.libColor
-                end)
-                button2.MouseLeave:connect(function()
-                    mid.BorderColor3 = Color3.fromRGB(30,30,30)
-                end)
-
-                local function updateValue(value,fakevalue)
-                    if typeof(value) == "table" then value = fakevalue end
-                    library.flags[args.flag] = value
-                    front.BackgroundColor3 = value
-                    if args.callback then
-                        args.callback(value)
-                    end
-                end
-
-                local white, black = Color3.new(1,1,1), Color3.new(0,0,0)
-                local colors = {Color3.new(1,0,0),Color3.new(1,1,0),Color3.new(0,1,0),Color3.new(0,1,1),Color3.new(0,0,1),Color3.new(1,0,1),Color3.new(1,0,0)}
-                local heartbeat = game:GetService("RunService").Heartbeat
-
-                local pickerX,pickerY,hueY = 0,0,0
-                local oldpercentX,oldpercentY = 0,0
-
-                hue.MouseEnter:Connect(function()
-                    local input = hue.InputBegan:connect(function(key)
-                        if key.UserInputType == Enum.UserInputType.MouseButton1 then
-                            while heartbeat:wait() and inputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
-                                library.colorpicking = true
-                                local percent = (hueY-hue.AbsolutePosition.Y-36)/hue.AbsoluteSize.Y
-                                local num = math.max(1, math.min(7,math.floor(((percent*7+0.5)*100))/100))
-                                local startC = colors[math.floor(num)]
-                                local endC = colors[math.ceil(num)]
-                                local color = white:lerp(picker.BackgroundColor3, oldpercentX):lerp(black, oldpercentY)
-                                picker.BackgroundColor3 = startC:lerp(endC, num-math.floor(num)) or Color3.new(0, 0, 0)
-                                updateValue(color)
-                            end
-                            library.colorpicking = false
-                        end
-                    end)
-                    local leave
-                    leave = hue.MouseLeave:connect(function()
-                        input:disconnect()
-                        leave:disconnect()
-                    end)
-                end)
-
-                picker.MouseEnter:Connect(function()
-                    local input = picker.InputBegan:connect(function(key)
-                        if key.UserInputType == Enum.UserInputType.MouseButton1 then
-                            while heartbeat:wait() and inputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
-                                library.colorpicking = true
-                                local xPercent = (pickerX-picker.AbsolutePosition.X)/picker.AbsoluteSize.X
-                                local yPercent = (pickerY-picker.AbsolutePosition.Y-36)/picker.AbsoluteSize.Y
-                                local color = white:lerp(picker.BackgroundColor3, xPercent):lerp(black, yPercent)
-                                updateValue(color)
-                                oldpercentX,oldpercentY = xPercent,yPercent
-                            end
-                            library.colorpicking = false
-                        end
-                    end)
-                    local leave
-                    leave = picker.MouseLeave:connect(function()
-                        input:disconnect()
-                        leave:disconnect()
-                    end)
-                end)
-
-                hue.MouseMoved:connect(function(_, y)
-                    hueY = y
-                end)
-
-                picker.MouseMoved:connect(function(x, y)
-                    pickerX,pickerY = x,y
-                end)
-
-                table.insert(library.toInvis,colorFrame)
-                library.flags[args.flag] = Color3.new(1,1,1)
-                library.options[args.flag] = {type = "colorpicker",changeState = updateValue,skipflag = args.skipflag,oldargs = args}
-
-                updateValue(args.color or Color3.new(1,1,1))
-            end
             return toggle
         end
         function group:addButton(args)
@@ -1293,7 +860,6 @@ function library:addTab(name)
                 valuetext.Text = value
                 library.flags[args.flag] = value
                 
-                -- Update fly speed if this is the fly speed slider
                 if args.flag == "fly_speed" then
                     library.flySpeed = value
                 end
@@ -1347,114 +913,6 @@ function library:addTab(name)
                 updateValue(args.value or args.min or 0)
             end
         end
-        function group:addTextbox(args)
-            if not args.flag then return warn("⚠️ incorrect arguments ⚠️") end
-            groupbox.Size += UDim2.new(0, 0, 0, 35)
-
-            local textbox = Instance.new("Frame")
-            local bg = Instance.new("Frame")
-            local main = Instance.new("ScrollingFrame")
-            local box = Instance.new("TextBox")
-            local gradient = Instance.new("UIGradient")
-            local text = Instance.new("TextLabel")
-
-            box:GetPropertyChangedSignal('Text'):Connect(function(val)
-                if library.colorpicking then return end
-                library.flags[args.flag] = box.Text
-                args.value = box.Text
-                if args.callback then
-                    args.callback()
-                end
-            end)
-            textbox.Name = "textbox"
-            textbox.Parent = grouper
-            textbox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            textbox.BackgroundTransparency = 1.000
-            textbox.BorderSizePixel = 0
-            textbox.Size = UDim2.new(1, 0, 0, 35)
-            textbox.ZIndex = 10
-
-            bg.Name = "bg"
-            bg.Parent = textbox
-            bg.BackgroundColor3 = Color3.fromRGB(15,15,15)
-            bg.BorderColor3 = Color3.fromRGB(0, 0, 0)
-            bg.BorderSizePixel = 2
-            bg.Position = UDim2.new(0.02, -1, 0, 16)
-            bg.Size = UDim2.new(0, 205, 0, 15)
-
-            main.Name = "main"
-            main.Parent = bg
-            main.Active = true
-            main.BackgroundColor3 = Color3.fromRGB(15,15,15)
-            main.BorderColor3 = Color3.fromRGB(30, 30, 30)
-            main.Size = UDim2.new(1, 0, 1, 0)
-            main.CanvasSize = UDim2.new(0, 0, 0, 0)
-            main.ScrollBarThickness = 0
-
-            box.Name = "box"
-            box.Parent = main
-            box.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            box.BackgroundTransparency = 1.000
-            box.Selectable = false
-            box.Size = UDim2.new(1, 0, 1, 0)
-            box.Font = Enum.Font.Code
-            box.Text = args.value or ""
-            box.TextColor3 = Color3.fromRGB(255, 255, 255)
-            box.TextSize = 13.000
-            box.TextStrokeTransparency = 0.000
-            box.TextXAlignment = Enum.TextXAlignment.Left
-
-            gradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(105, 105, 105)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(121, 121, 121))}
-            gradient.Rotation = 90
-            gradient.Name = "gradient"
-            gradient.Parent = main
-
-            text.Name = "text"
-            text.Parent = textbox
-            text.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            text.BackgroundTransparency = 1.000
-            text.Position = UDim2.new(0.0299999993, -1, 0, 7)
-            text.ZIndex = 2
-            text.Font = Enum.Font.Code
-            text.Text = args.text or args.flag
-            text.TextColor3 = Color3.fromRGB(244, 244, 244)
-            text.TextSize = 13.000
-            text.TextStrokeTransparency = 0.000
-            text.TextXAlignment = Enum.TextXAlignment.Left
-
-
-            library.flags[args.flag] = args.value or ""
-            library.options[args.flag] = {type = "textbox",changeState = function(text) box.Text = text end,skipflag = args.skipflag,oldargs = args}
-        end
-        function group:addDivider(args)
-            groupbox.Size += UDim2.new(0, 0, 0, 10)
-            
-            local div = Instance.new("Frame")
-            local bg = Instance.new("Frame")
-            local main = Instance.new("Frame")
-
-            div.Name = "div"
-            div.Parent = grouper
-            div.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            div.BackgroundTransparency = 1.000
-            div.BorderSizePixel = 0
-            div.Position = UDim2.new(0, 0, 0.743662, 0)
-            div.Size = UDim2.new(0, 202, 0, 10)
-            
-            bg.Name = "bg"
-            bg.Parent = div
-            bg.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-            bg.BorderColor3 = Color3.fromRGB(0, 0, 0)
-            bg.BorderSizePixel = 2
-            bg.Position = UDim2.new(0.02, 0, 0, 4)
-            bg.Size = UDim2.new(0, 191, 0, 1)
-            
-            main.Name = "main"
-            main.Parent = bg
-            main.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-            main.BorderColor3 = Color3.fromRGB(60, 60, 60)
-            main.Size = UDim2.new(0, 191, 0, 1)
-        end
         function group:addKeybind(args)
             if not args.flag then return warn("⚠️ incorrect arguments ⚠️ - missing args on keybind") end
             groupbox.Size += UDim2.new(0, 0, 0, 20)
@@ -1485,10 +943,10 @@ function library:addTab(name)
             button.BackgroundColor3 = Color3.fromRGB(187, 131, 255)
             button.BackgroundTransparency = 1.000
             button.BorderSizePixel = 0
-            button.Position = UDim2.new(7.09711117e-08, 0, 0, 0)
-            button.Size = UDim2.new(0.02, 0, 1, 0)
+            button.Position = UDim2.new(0.9, 0, 0, 0)
+            button.Size = UDim2.new(0.1, 0, 1, 0)
             button.Font = Enum.Font.Code
-            button.Text = "--"
+            button.Text = keyNames[args.key] or "F"
             button.TextColor3 = Color3.fromRGB(155, 155, 155)
             button.TextSize = 13.000
             button.TextStrokeTransparency = 0.000
@@ -1498,34 +956,42 @@ function library:addTab(name)
                 if library.colorpicking then return end
                 library.flags[args.flag] = val
                 button.Text = keyNames[val] or val.Name
+                
+                if args.flag == "fly_keybind" then
+                    library.flyKeybind = val
+                end
+                
+                if args.callback then
+                    args.callback(val)
+                end
             end
             
-            inputService.InputBegan:Connect(function(key)
-                local key = key.KeyCode == Enum.KeyCode.Unknown and key.UserInputType or key.KeyCode
+            inputService.InputBegan:Connect(function(input, gameProcessed)
+                if gameProcessed then return end
+                local key = input.KeyCode == Enum.KeyCode.Unknown and input.UserInputType or input.KeyCode
+                
                 if next then
                     if not table.find(library.blacklisted,key) then
                         next = false
-                        library.flags[args.flag] = key
-                        button.Text = keyNames[key] or key.Name
+                        updateValue(key)
                         button.TextColor3 = Color3.fromRGB(155, 155, 155)
-                        
-                        -- If this is the fly keybind, set it
-                        if args.flag == "fly_keybind" then
-                            currentFlyKeybind = key
-                        end
+                        library:notify("Keybind set to: "..(keyNames[key] or key.Name))
                     end
                 end
-                if not next and key == library.flags[args.flag] and args.callback then
-                    args.callback()
+                
+                if not next and key == library.flags[args.flag] then
+                    if args.flag == "fly_keybind" then
+                        toggleFly()
+                    end
                 end
             end)
 
             button.MouseButton1Click:Connect(function()
                 if library.colorpicking then return end
-                library.flags[args.flag] = Enum.KeyCode.Unknown
+                next = true
                 button.Text = "..."
                 button.TextColor3 = library.libColor
-                next = true
+                library:notify("Press any key to set keybind")
             end)
 
             library.flags[args.flag] = args.key or Enum.KeyCode.F
@@ -1539,15 +1005,37 @@ end
 
 -- Create Tabs
 local rageTab = library:addTab("Rage")
-local flyTab = library:addTab("Fly")
 local miscTab = library:addTab("Misc")
-local configTab = library:addTab("Settings")
+local settingsTab = library:addTab("Settings")
 
--- RAGE TAB
+-- RAGE TAB (Includes Fly features)
+local flyGroup = rageTab:createGroup('left', 'Flight')
 local rageGroup = rageTab:createGroup('left', 'Rage Mode')
-local teleportGroup = rageTab:createGroup('left', 'Teleport')
+local teleportGroup = rageTab:createGroup('right', 'Teleport')
 local combatGroup = rageTab:createGroup('right', 'Combat')
 
+-- Flight Group
+flyGroup:addToggle({text = "Enable Fly", flag = "fly_enabled", callback = function(state)
+    toggleFly()
+end})
+
+flyGroup:addKeybind({text = "Fly Keybind", flag = "fly_keybind", key = Enum.KeyCode.F})
+
+flyGroup:addSlider({text = "Fly Speed", flag = "fly_speed", min = 10, max = 1000, value = 50})
+
+-- Noclip as separate toggle (not tied to fly)
+flyGroup:addToggle({text = "Noclip", flag = "noclip_enabled", callback = function(state)
+    library.noclipEnabled = state
+    if state then
+        enableNoclip()
+        library:notify("Noclip Enabled")
+    else
+        disableNoclip()
+        library:notify("Noclip Disabled")
+    end
+end})
+
+-- Rage Mode Group
 rageGroup:addToggle({text = "Rage Mode", flag = "rage_mode", callback = function(state)
     if state then
         enableRageMode()
@@ -1559,15 +1047,7 @@ rageGroup:addToggle({text = "Rage Mode", flag = "rage_mode", callback = function
     end
 end})
 
-rageGroup:addToggle({text = "Auto Noclip", flag = "auto_noclip", callback = function(state)
-    getgenv().noclipfly = state
-    if state and library.flyEnabled then
-        enableNoclip()
-    elseif not state then
-        disableNoclip()
-    end
-end})
-
+-- Teleport Group
 teleportGroup:addButton({text = "TP to Mouse", callback = tpToMouse})
 
 teleportGroup:addButton({text = "TP to Random Player", callback = function()
@@ -1584,54 +1064,8 @@ teleportGroup:addButton({text = "TP to Random Player", callback = function()
     end
 end})
 
+-- Combat Group
 combatGroup:addButton({text = "KILL ALL", callback = killAll})
-
-combatGroup:addToggle({text = "Instant Kill", flag = "instant_kill", callback = function(state)
-    -- This would need a loop checking for nearby players
-    if state then
-        library:notify("Instant Kill Activated")
-    end
-end})
-
--- FLY TAB
-local flyMainGroup = flyTab:createGroup('left', 'Main')
-local flySpeedGroup = flyTab:createGroup('left', 'Speed')
-local flyMethodGroup = flyTab:createGroup('right', 'Method')
-
-flyMainGroup:addToggle({text = "Enable Fly", flag = "fly_enabled", callback = function(state)
-    toggleFly()
-end})
-
-flyMainGroup:addKeybind({text = "Fly Keybind", flag = "fly_keybind", key = Enum.KeyCode.F, callback = function()
-    toggleFly()
-end})
-
-flyMainGroup:addToggle({text = "Noclip", flag = "fly_noclip", callback = function(state)
-    getgenv().noclipfly = state
-    if state and library.flyEnabled then
-        enableNoclip()
-    elseif not state then
-        disableNoclip()
-    end
-end})
-
-flySpeedGroup:addSlider({text = "Fly Speed", flag = "fly_speed", min = 10, max = 1000, value = 50})
-
-flyMethodGroup:addToggle({text = "Use V3 Method", flag = "fly_method_v3", callback = function(state)
-    library.flyMethod = state and "V3" or "V4"
-    if library.flyEnabled then
-        stopFly()
-        startFly()
-    end
-end})
-
-flyMethodGroup:addButton({text = "Go Up (Hold)", callback = function()
-    -- This would need to be handled differently - hold functionality not in button
-end})
-
-flyMethodGroup:addButton({text = "Go Down (Hold)", callback = function()
-    -- This would need to be handled differently - hold functionality not in button
-end})
 
 -- MISC TAB
 local miscGroup = miscTab:createGroup('left', 'Misc')
@@ -1666,20 +1100,12 @@ miscGroup:addButton({text = "Server Hop", callback = function()
     end
 end})
 
-miscGroup:addToggle({text = "Inf Jump", flag = "inf_jump", callback = function(state)
-    if state then
-        localPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-        library:notify("Inf Jump Enabled")
-    end
-end})
-
 -- SETTINGS TAB
-local uiGroup = configTab:createGroup('left', 'UI Settings')
-local configGroup = configTab:createGroup('right', 'Config')
+local uiGroup = settingsTab:createGroup('left', 'UI Settings')
+local configGroup = settingsTab:createGroup('right', 'Config')
 
 uiGroup:addColorpicker({text = "Menu Accent", flag = "menu_accent", color = Color3.fromRGB(255, 0, 0), callback = function(color)
     library.libColor = color
-    -- Update all accent elements
 end})
 
 uiGroup:addToggle({text = "Show Keybinds", flag = "show_keybinds"})
@@ -1705,11 +1131,15 @@ localPlayer.CharacterAdded:Connect(function(char)
     if library.flyEnabled then
         startFly()
     end
+    if library.noclipEnabled then
+        enableNoclip()
+    end
 end)
 
 -- Cleanup on script unload
 local function cleanup()
     stopFly()
+    disableNoclip()
     if library.noclipConnection then
         library.noclipConnection:Disconnect()
     end
