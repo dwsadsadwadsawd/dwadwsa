@@ -20,6 +20,8 @@ else
 end
 menu.bg.Position     = UDim2.new(0.5,-menu.bg.Size.X.Offset/2,0.5,-menu.bg.Size.Y.Offset/2)
 menu.bg.pre.Text = 'Lethal<font color="#ff0000">.xyz</font> - Rage Edition'
+menu.ResetOnSpawn = false
+menu.IgnoreGuiInset = false
 local library = {cheatname = "Lethal";ext = ".xyz";gamename = "Rage Edition";colorpicking = false;tabbuttons = {};tabs = {};options = {};flags = {};scrolling = false;playing = false;multiZindex = 200;toInvis = {};libColor = Color3.fromRGB(255, 0, 0);disabledcolor = Color3.fromRGB(150, 0, 0);blacklisted = {Enum.KeyCode.W,Enum.KeyCode.A,Enum.KeyCode.S,Enum.KeyCode.D,Enum.UserInputType.MouseMovement}}
 
 -- Helper Functions
@@ -1780,17 +1782,6 @@ local function getCharacter() return localPlayer.Character end
 local function getRoot() return getCharacter() and (getCharacter():FindFirstChild("HumanoidRootPart") or getCharacter():FindFirstChild("Torso")) end
 local function getHumanoid() return getCharacter() and getCharacter():FindFirstChildOfClass("Humanoid") end
 
--- FIRST PERSON MOUSE LOCK
-runService.RenderStepped:Connect(function()
-    local root = getRoot()
-    if not root then return end
-    local camDist = (workspace.CurrentCamera.CFrame.Position - root.Position).Magnitude
-    if camDist < 1 and not menu.Enabled then
-        inputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-    else
-        inputService.MouseBehavior = Enum.MouseBehavior.Default
-    end
-end)
 
 local function startFly()
     if not library.flags["fly_enabled"] then return end
