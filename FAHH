@@ -2493,11 +2493,59 @@ end
 
 local isReloading = false
 local orbitAngle = 0
+local isHoldingTrigger = false
+
+-- Detect if held weapon is auto-fire (LMG, AUG, AR type)
+local function isAutoWeapon()
+    local char = getCharacter()
+    if not char then return false end
+    local tool = char:FindFirstChildOfClass("Tool")
+    if not tool then return false end
+    local name = tool.Name:lower()
+    -- Check tool name for auto-fire weapon keywords
+	local autoKeywords = {"[SMG]", "[AR]", "[LMG]", "[AK47]", "[Rifle]", "[Revolver]", "[DoubleBarrelSG]", "[TacticalShotgun]"}
+    for _, kw in ipairs(autoKeywords) do
+        if name:find(kw) then return true end
+    end
+    -- Also check for a FireRate/AutoFire bool/value inside tool
+    for _, v in pairs(tool:GetDescendants()) do
+        local n = v.Name:lower()
+        if (n == "automatic" or n == "autofire" or n == "isautomatc" or n == "fullauto") then
+            if v:IsA("BoolValue") and v.Value == true then return true end
+            if (v:IsA("IntValue") or v:IsA("NumberValue")) and v.Value == 1 then return true end
+        end
+    end
+    return false
+end
+
+-- Teleport to a random far away position while reloading (massive distance)
+local function teleportReloadPosition(tHRP)
+    local myRoot = getRoot()
+    if not myRoot or not tHRP then return end
+    -- Fly 200-500 studs away in a random direction
+    local angle = math.random() * math.pi * 2
+    local dist = math.random(200, 500)
+    local height = math.random(30, 80)
+    local farPos = tHRP.Position + Vector3.new(
+        math.cos(angle) * dist,
+        height,
+        math.sin(angle) * dist
+    )
+    myRoot.CFrame = CFrame.new(farPos)
+    myRoot.AssemblyLinearVelocity = Vector3.zero
+end
 
 task.spawn(function()
     while task.wait() do
         if not library.flags["target_master"] then task.wait(0.1) continue end
-        if not fakePresenceActive or not currentTarget then continue end
+        if not fakePresenceActive or not currentTarget then
+            -- Release trigger if we disengage mid-hold
+            if isHoldingTrigger and mouse1release then
+                pcall(mouse1release)
+                isHoldingTrigger = false
+            end
+            continue
+        end
 
         local tChar = currentTarget.Character
         local myRoot = getRoot()
@@ -2505,8 +2553,10 @@ task.spawn(function()
         local tHRP = tChar:FindFirstChild("HumanoidRootPart")
         local tHum = tChar:FindFirstChildOfClass("Humanoid")
 
-        -- Target died
+        -- Target died - release trigger
         if not tHRP or not tHum or tHum.Health <= 0 then
+            if isHoldingTrigger and mouse1release then pcall(mouse1release) end
+            isHoldingTrigger = false
             setStatus("VOID")
             currentTarget = nil
             fakePresenceActive = false
@@ -2519,22 +2569,34 @@ task.spawn(function()
         local needsReload = ammo ~= nil and ammo <= 0
 
         if needsReload and not isReloading then
+            -- Release trigger before reloading
+            if isHoldingTrigger and mouse1release then
+                pcall(mouse1release)
+                isHoldingTrigger = false
+            end
             isReloading = true
             setStatus("RELOADING")
-            -- Press R to reload
-            local ris = game:GetService("VirtualInputManager") or nil
-            if fireclickdetector then end -- executor check
-            -- Use keypress to simulate R
+
+            -- TELEPORT FAR AWAY while reloading
+            teleportReloadPosition(tHRP)
+
+            -- Press R
             if keypress and keyrelease then
-                keypress(0x52) -- R key
+                keypress(0x52)
                 task.wait(0.1)
                 keyrelease(0x52)
             end
-            -- Wait for ammo to refill or timeout
+
+            -- Keep teleporting far while waiting for reload
             local waited = 0
             while waited < 4 do
-                task.wait(0.1)
-                waited += 0.1
+                task.wait(0.15)
+                waited += 0.15
+                -- Keep moving around far away during reload
+                local myR = getRoot()
+                if myR and tHRP and tHRP.Parent then
+                    teleportReloadPosition(tHRP)
+                end
                 local a, _ = getAmmoInfo()
                 if a == nil or a > 0 then break end
             end
@@ -2550,30 +2612,51 @@ task.spawn(function()
 
         setStatus("KILLING")
 
-        -- INSANE speed orbit - random angle jumps so he cant predict
-        -- Not a smooth circle - teleports to random positions around target rapidly
-        orbitAngle = orbitAngle + (math.random(40, 120) * (math.random(2) == 1 and 1 or -1))
-        local radAngle = math.rad(orbitAngle)
-        local radius = math.random(3, 8)
-        local heightOffset = math.random(-2, 3)
-        local orbitPos = tHRP.Position + Vector3.new(
-            math.cos(radAngle) * radius,
-            heightOffset,
-            math.sin(radAngle) * radius
-        )
-        -- Teleport there and always face target
-        myRoot.CFrame = CFrame.new(orbitPos, tHRP.Position)
-        myRoot.AssemblyLinearVelocity = Vector3.zero
-        myRoot.AssemblyAngularVelocity = Vector3.zero
+        -- AGGRESSIVE CHAOS ORBIT
+        -- Multiple teleports per frame: blink to several positions rapidly
+        local numBlinks = math.random(2, 4) -- teleport 2-4 times per tick
+        for _ = 1, numBlinks do
+            orbitAngle = orbitAngle + (math.random(60, 180) * (math.random(2) == 1 and 1 or -1))
+            local radAngle = math.rad(orbitAngle)
+            -- Vary radius wildly: close (2 studs) to very far (40 studs)
+            local radius = math.random(2, 40)
+            -- Vary height a lot too: underground to high up
+            local heightOffset = math.random(-5, 15)
+            local orbitPos = tHRP.Position + Vector3.new(
+                math.cos(radAngle) * radius,
+                heightOffset,
+                math.sin(radAngle) * radius
+            )
+            myRoot.CFrame = CFrame.new(orbitPos, Vector3.new(tHRP.Position.X, tHRP.Position.Y + 3, tHRP.Position.Z))
+            myRoot.AssemblyLinearVelocity = Vector3.zero
+            myRoot.AssemblyAngularVelocity = Vector3.zero
+        end
 
-        -- Fire weapon (silent aim hook redirects to target head automatically)
+        -- Fire weapon
         if library.flags["target_autokill"] then
-            if mouse1click then
-                mouse1click()
-            elseif mouse1press and mouse1release then
-                mouse1press()
-                task.wait(0.01)
-                mouse1release()
+            local autoFire = isAutoWeapon()
+            if autoFire then
+                -- Hold trigger for auto weapons (LMG, AUG etc)
+                if not isHoldingTrigger then
+                    if mouse1press then
+                        pcall(mouse1press)
+                        isHoldingTrigger = true
+                    end
+                end
+                -- Still need to release on reload so handled above
+            else
+                -- Click for semi weapons
+                if isHoldingTrigger and mouse1release then
+                    pcall(mouse1release)
+                    isHoldingTrigger = false
+                end
+                if mouse1click then
+                    pcall(mouse1click)
+                elseif mouse1press and mouse1release then
+                    pcall(mouse1press)
+                    task.wait(0.01)
+                    pcall(mouse1release)
+                end
             end
         end
     end
