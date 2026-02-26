@@ -20,8 +20,6 @@ else
 end
 menu.bg.Position     = UDim2.new(0.5,-menu.bg.Size.X.Offset/2,0.5,-menu.bg.Size.Y.Offset/2)
 menu.bg.pre.Text = 'Lethal<font color="#ff0000">.xyz</font> - Rage Edition'
-menu.ResetOnSpawn = false
-menu.IgnoreGuiInset = false
 local library = {cheatname = "Lethal";ext = ".xyz";gamename = "Rage Edition";colorpicking = false;tabbuttons = {};tabs = {};options = {};flags = {};scrolling = false;playing = false;multiZindex = 200;toInvis = {};libColor = Color3.fromRGB(255, 0, 0);disabledcolor = Color3.fromRGB(150, 0, 0);blacklisted = {Enum.KeyCode.W,Enum.KeyCode.A,Enum.KeyCode.S,Enum.KeyCode.D,Enum.UserInputType.MouseMovement}}
 
 -- Helper Functions
