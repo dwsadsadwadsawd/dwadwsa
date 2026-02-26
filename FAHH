@@ -2372,15 +2372,12 @@ end
 players.PlayerAdded:Connect(createHealthESP)
 
 -- ============================================================
--- TARGET SYSTEM
--- Q = set target, E = fake presence (teleport/strafe loop)
--- Line from local left hand to target with red/black gradient
--- Status display at bottom of screen
--- Master switch: target_master
+-- SIMPLIFIED TARGET SYSTEM
 -- ============================================================
 local targetLine = Drawing.new("Line")
 targetLine.Visible = false
 targetLine.Thickness = 2
+targetLine.Color = Color3.new(1, 0, 0)
 targetLine.Transparency = 1
 
 local statusText = Drawing.new("Text")
@@ -2399,347 +2396,187 @@ targetNameText.Outline = true
 targetNameText.Color = Color3.new(1, 1, 1)
 targetNameText.Center = true
 
-local targetStatus = "VOID"
+local targetStatus = "IDLE"
 
 local function setStatus(s)
     targetStatus = s
-end
-
--- Gradient line: draws multiple segments red -> black
-local gradientSegments = {}
-for i = 1, 8 do
-    local seg = Drawing.new("Line")
-    seg.Visible = false
-    seg.Thickness = 2
-    seg.Transparency = 1
-    local t = (i-1)/7
-    seg.Color = Color3.new(1 - t, 0, 0) -- red to black
-    table.insert(gradientSegments, seg)
 end
 
 local function clearTarget()
     currentTarget = nil
     fakePresenceActive = false
     autokillActive = false
-    killLoopRunning = false
-    setStatus("VOID")
+    originalPosition = nil
     targetLine.Visible = false
     targetNameText.Visible = false
-    for _, seg in pairs(gradientSegments) do seg.Visible = false end
+    statusText.Visible = false
+    setStatus("IDLE")
 end
 
--- Q to set target = closest player to crosshair
-inputService.InputBegan:Connect(function(key, gpe)
-    if gpe then return end
-    if not library.flags["target_master"] then return end
-
-    if key.KeyCode == (library.flags["target_set_kb"] or Enum.KeyCode.Q) then
-        -- find closest to center screen
-        local vp = workspace.CurrentCamera.ViewportSize
-        local center = Vector2.new(vp.X/2, vp.Y/2)
-        local closest, closestDist = nil, math.huge
-        for _, plr in pairs(players:GetPlayers()) do
-            if plr ~= localPlayer and plr.Character and plr.Character:FindFirstChild("Head") then
-                local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(plr.Character.Head.Position)
-                if onScreen then
-                    local d = (Vector2.new(pos.X, pos.Y) - center).Magnitude
-                    if d < closestDist then closest = plr closestDist = d end
+-- Function to find closest player to mouse
+local function findClosestPlayerToMouse()
+    local mousePos = Vector2.new(mouse.X, mouse.Y)
+    local closest = nil
+    local closestDist = 100 -- 100 pixel radius
+    
+    for _, plr in pairs(players:GetPlayers()) do
+        if plr ~= localPlayer and plr.Character and plr.Character:FindFirstChild("Head") then
+            local head = plr.Character.Head
+            local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(head.Position)
+            if onScreen then
+                local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                if dist < closestDist then
+                    closestDist = dist
+                    closest = plr
                 end
             end
         end
-        if closest then
-            currentTarget = closest
-            setStatus("TARGET: " .. closest.Name)
-            library:notify("Target set: " .. closest.Name)
+    end
+    return closest
+end
+
+-- Keybind handling
+inputService.InputBegan:Connect(function(key, gpe)
+    if gpe or not menu.Enabled or not library.flags["target_master"] then return end
+    
+    -- Set target with Q (or custom keybind)
+    if key.KeyCode == (library.flags["target_set_kb"] or Enum.KeyCode.Q) then
+        local target = findClosestPlayerToMouse()
+        if target then
+            currentTarget = target
+            fakePresenceActive = true
+            setStatus("TARGET: " .. target.Name)
+            library:notify("Target set: " .. target.Name)
+        else
+            library:notify("No player near mouse")
         end
     end
-
-    -- E = toggle fake presence / combat loop
-    if key.KeyCode == (library.flags["target_engage_kb"] or Enum.KeyCode.E) then
-        if not currentTarget then library:notify("No target set") return end
-        fakePresenceActive = not fakePresenceActive
-        if fakePresenceActive then
-            setStatus("ENGAGING")
-            autokillActive = true
+    
+    -- Toggle autokill with E (or custom keybind)
+    if key.KeyCode == (library.flags["autokill_kb"] or Enum.KeyCode.E) then
+        if not currentTarget then
+            library:notify("Set a target first with Q")
+            return
+        end
+        
+        autokillActive = not autokillActive
+        if autokillActive then
+            originalPosition = getRoot() and getRoot().Position
+            setStatus("KILLING " .. currentTarget.Name)
+            library:notify("Autokill ON")
         else
-            setStatus("IDLE")
-            autokillActive = false
+            originalPosition = nil
+            setStatus("TARGET: " .. currentTarget.Name)
+            library:notify("Autokill OFF")
         end
     end
 end)
 
--- AUTOKILL / TARGET COMBAT LOOP
--- Detects ammo from held tool (looks for IntValue/NumberValue named ammo/Ammo/currentAmmo etc)
-local function getAmmoInfo()
-    local char = getCharacter()
-    if not char then return nil, nil end
-    local tool = char:FindFirstChildOfClass("Tool")
-    if not tool then return nil, nil end
-    local ammo, maxAmmo = nil, nil
-    -- Search entire tool tree for ammo-like values
-    for _, v in pairs(tool:GetDescendants()) do
-        if v:IsA("IntValue") or v:IsA("NumberValue") then
-            local n = v.Name:lower()
-            if n == "ammo" or n == "currentammo" or n == "bullets" or n == "clip" or n == "magazine" then
-                ammo = v.Value
-            end
-            if n == "maxammo" or n == "maxbullets" or n == "clipsize" or n == "magazinesize" or n == "maxclip" then
-                maxAmmo = v.Value
-            end
-        end
-    end
-    return ammo, maxAmmo
-end
-
-local isReloading = false
-local orbitAngle = 0
-local isHoldingTrigger = false
-
--- Detect if held weapon is auto-fire (LMG, AUG, AR type)
-local function isAutoWeapon()
-    local char = getCharacter()
-    if not char then return false end
-    local tool = char:FindFirstChildOfClass("Tool")
-    if not tool then return false end
-    local name = tool.Name:lower()
-    -- Check tool name for auto-fire weapon keywords
-	local autoKeywords = {"[SMG]", "[AR]", "[LMG]", "[AK47]", "[Rifle]", "[Revolver]", "[DoubleBarrelSG]", "[TacticalShotgun]"}
-    for _, kw in ipairs(autoKeywords) do
-        if name:find(kw) then return true end
-    end
-    -- Also check for a FireRate/AutoFire bool/value inside tool
-    for _, v in pairs(tool:GetDescendants()) do
-        local n = v.Name:lower()
-        if (n == "automatic" or n == "autofire" or n == "isautomatc" or n == "fullauto") then
-            if v:IsA("BoolValue") and v.Value == true then return true end
-            if (v:IsA("IntValue") or v:IsA("NumberValue")) and v.Value == 1 then return true end
-        end
-    end
-    return false
-end
-
--- Teleport to a random far away position while reloading (massive distance)
-local function teleportReloadPosition(tHRP)
-    local myRoot = getRoot()
-    if not myRoot or not tHRP then return end
-    -- Fly 200-500 studs away in a random direction
-    local angle = math.random() * math.pi * 2
-    local dist = math.random(200, 500)
-    local height = math.random(30, 80)
-    local farPos = tHRP.Position + Vector3.new(
-        math.cos(angle) * dist,
-        height,
-        math.sin(angle) * dist
-    )
-    myRoot.CFrame = CFrame.new(farPos)
-    myRoot.AssemblyLinearVelocity = Vector3.zero
-end
-
+-- Autokill loop
 task.spawn(function()
-    while task.wait() do
-        if not library.flags["target_master"] then task.wait(0.1) continue end
-        if not fakePresenceActive or not currentTarget then
-            -- Release trigger if we disengage mid-hold
-            if isHoldingTrigger and mouse1release then
-                pcall(mouse1release)
-                isHoldingTrigger = false
-            end
+    while task.wait(0.1) do
+        if not library.flags["target_master"] or not autokillActive or not currentTarget then
             continue
         end
-
-        local tChar = currentTarget.Character
+        
         local myRoot = getRoot()
-        if not tChar or not myRoot then continue end
+        local tChar = currentTarget.Character
+        if not myRoot or not tChar then
+            autokillActive = false
+            library:notify("Target lost")
+            continue
+        end
+        
         local tHRP = tChar:FindFirstChild("HumanoidRootPart")
         local tHum = tChar:FindFirstChildOfClass("Humanoid")
-
-        -- Target died - release trigger
+        
         if not tHRP or not tHum or tHum.Health <= 0 then
-            if isHoldingTrigger and mouse1release then pcall(mouse1release) end
-            isHoldingTrigger = false
-            setStatus("VOID")
+            autokillActive = false
             currentTarget = nil
             fakePresenceActive = false
-            isReloading = false
+            setStatus("IDLE")
+            library:notify("Target died")
             continue
         end
-
-        -- Check ammo
-        local ammo, maxAmmo = getAmmoInfo()
-        local needsReload = ammo ~= nil and ammo <= 0
-
-        if needsReload and not isReloading then
-            -- Release trigger before reloading
-            if isHoldingTrigger and mouse1release then
-                pcall(mouse1release)
-                isHoldingTrigger = false
-            end
-            isReloading = true
-            setStatus("RELOADING")
-
-            -- TELEPORT FAR AWAY while reloading
-            teleportReloadPosition(tHRP)
-
-            -- Press R
-            if keypress and keyrelease then
-                keypress(0x52)
-                task.wait(0.1)
-                keyrelease(0x52)
-            end
-
-            -- Keep teleporting far while waiting for reload
-            local waited = 0
-            while waited < 4 do
-                task.wait(0.15)
-                waited += 0.15
-                -- Keep moving around far away during reload
-                local myR = getRoot()
-                if myR and tHRP and tHRP.Parent then
-                    teleportReloadPosition(tHRP)
-                end
-                local a, _ = getAmmoInfo()
-                if a == nil or a > 0 then break end
-            end
-            isReloading = false
-            setStatus("KILLING")
-            continue
+        
+        -- Teleport to target and kill
+        myRoot.CFrame = tHRP.CFrame * CFrame.new(0, 0, 3)
+        task.wait(0.05)
+        tHum.Health = 0
+        
+        -- Teleport back to original position
+        if originalPosition then
+            task.wait(0.05)
+            myRoot.Position = originalPosition
         end
-
-        if isReloading then
-            setStatus("RELOADING")
-            continue
-        end
-
-        setStatus("KILLING")
-
-        -- AGGRESSIVE CHAOS ORBIT
-        -- Multiple teleports per frame: blink to several positions rapidly
-        local numBlinks = math.random(2, 4) -- teleport 2-4 times per tick
-        for _ = 1, numBlinks do
-            orbitAngle = orbitAngle + (math.random(60, 180) * (math.random(2) == 1 and 1 or -1))
-            local radAngle = math.rad(orbitAngle)
-            -- Vary radius wildly: close (2 studs) to very far (40 studs)
-            local radius = math.random(2, 40)
-            -- Vary height a lot too: underground to high up
-            local heightOffset = math.random(-5, 15)
-            local orbitPos = tHRP.Position + Vector3.new(
-                math.cos(radAngle) * radius,
-                heightOffset,
-                math.sin(radAngle) * radius
-            )
-            myRoot.CFrame = CFrame.new(orbitPos, Vector3.new(tHRP.Position.X, tHRP.Position.Y + 3, tHRP.Position.Z))
-            myRoot.AssemblyLinearVelocity = Vector3.zero
-            myRoot.AssemblyAngularVelocity = Vector3.zero
-        end
-
-        -- Fire weapon
-        if library.flags["target_autokill"] then
-            local autoFire = isAutoWeapon()
-            if autoFire then
-                -- Hold trigger for auto weapons (LMG, AUG etc)
-                if not isHoldingTrigger then
-                    if mouse1press then
-                        pcall(mouse1press)
-                        isHoldingTrigger = true
-                    end
-                end
-                -- Still need to release on reload so handled above
-            else
-                -- Click for semi weapons
-                if isHoldingTrigger and mouse1release then
-                    pcall(mouse1release)
-                    isHoldingTrigger = false
-                end
-                if mouse1click then
-                    pcall(mouse1click)
-                elseif mouse1press and mouse1release then
-                    pcall(mouse1press)
-                    task.wait(0.01)
-                    pcall(mouse1release)
-                end
-            end
-        end
+        
+        -- Turn off autokill after killing
+        autokillActive = false
+        originalPosition = nil
+        setStatus("TARGET: " .. currentTarget.Name)
+        library:notify("Killed " .. currentTarget.Name)
     end
 end)
 
--- RENDER: gradient line + status text
+-- Render loop for visuals
 runService.RenderStepped:Connect(function()
-    -- Status text at bottom of screen
-    if library.flags["target_master"] then
-        local vp = workspace.CurrentCamera.ViewportSize
+    local vp = workspace.CurrentCamera.ViewportSize
+    
+    if library.flags["target_master"] and currentTarget then
+        -- Status text
         statusText.Visible = true
         statusText.Position = Vector2.new(vp.X / 2, vp.Y - 40)
         statusText.Text = "[ " .. targetStatus .. " ]"
-        statusText.Color = fakePresenceActive and Color3.new(1, 0, 0) or Color3.new(0.6, 0.6, 0.6)
-
-        if currentTarget and currentTarget.Character then
-            local tHead = currentTarget.Character:FindFirstChild("Head")
-            if tHead then
-                local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(tHead.Position)
-                targetNameText.Visible = onScreen
-                targetNameText.Position = Vector2.new(pos.X, pos.Y - 25)
+        statusText.Color = autokillActive and Color3.new(1, 0, 0) or Color3.new(0.6, 0.6, 0.6)
+        
+        -- Target name
+        local tChar = currentTarget.Character
+        if tChar and tChar:FindFirstChild("Head") then
+            local headPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(tChar.Head.Position)
+            if onScreen then
+                targetNameText.Visible = true
+                targetNameText.Position = Vector2.new(headPos.X, headPos.Y - 25)
                 targetNameText.Text = "► " .. currentTarget.Name .. " ◄"
+            else
+                targetNameText.Visible = false
+            end
+        end
+        
+        -- Target line from center of screen
+        if library.flags["target_line"] and tChar and tChar:FindFirstChild("Head") then
+            local headPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(tChar.Head.Position)
+            if onScreen then
+                targetLine.Visible = true
+                targetLine.From = Vector2.new(vp.X / 2, vp.Y / 2)
+                targetLine.To = Vector2.new(headPos.X, headPos.Y)
+            else
+                targetLine.Visible = false
             end
         else
-            targetNameText.Visible = false
+            targetLine.Visible = false
         end
     else
         statusText.Visible = false
         targetNameText.Visible = false
-    end
-
-    -- Gradient line from local left hand to target head
-    if not library.flags["target_master"] or not library.flags["target_line"] or not currentTarget then
-        for _, seg in pairs(gradientSegments) do seg.Visible = false end
-        return
-    end
-    local myChar = getCharacter()
-    local tChar = currentTarget.Character
-    if not myChar or not tChar then
-        for _, seg in pairs(gradientSegments) do seg.Visible = false end
-        return
-    end
-    local leftHand = myChar:FindFirstChild("Left Arm") or myChar:FindFirstChild("LeftHand") or myChar:FindFirstChild("HumanoidRootPart")
-    local tHead = tChar:FindFirstChild("Head")
-    if not leftHand or not tHead then
-        for _, seg in pairs(gradientSegments) do seg.Visible = false end
-        return
-    end
-    local fromPos, fromOnScreen = workspace.CurrentCamera:WorldToViewportPoint(leftHand.Position)
-    local toPos, toOnScreen = workspace.CurrentCamera:WorldToViewportPoint(tHead.Position)
-    if not fromOnScreen or not toOnScreen then
-        for _, seg in pairs(gradientSegments) do seg.Visible = false end
-        return
-    end
-    local from2 = Vector2.new(fromPos.X, fromPos.Y)
-    local to2 = Vector2.new(toPos.X, toPos.Y)
-    local n = #gradientSegments
-    for i, seg in ipairs(gradientSegments) do
-        local t0 = (i-1)/n
-        local t1 = i/n
-        seg.Visible = true
-        seg.From = from2:Lerp(to2, t0)
-        seg.To   = from2:Lerp(to2, t1)
+        targetLine.Visible = false
     end
 end)
 
 -- ============================================================
 -- TARGET TAB UI
 -- ============================================================
-
-local tG1 = rageTab:createGroup('left', 'Target')
-tG1:addToggle({text = "Target Master Switch", flag = "target_master", callback = function(s)
+local tG1 = rageTab:createGroup('left', 'Target System')
+tG1:addToggle({text = "Enable Target System", flag = "target_master", callback = function(s)
     if not s then clearTarget() end
 end})
 tG1:addDivider()
 tG1:addToggle({text = "Show Target Line", flag = "target_line"})
-tG1:addKeybind({text = "Set Target", flag = "target_set_kb", key = Enum.KeyCode.Q})
-tG1:addKeybind({text = "Engage / Disengage", flag = "target_engage_kb", key = Enum.KeyCode.E})
-tG1:addButton({text = "Clear Target", callback = function() clearTarget() library:notify("Target cleared") end})
-
-local tG2 = rageTab:createGroup('left', 'Autokill')
-tG2:addToggle({text = "Autokill", flag = "target_autokill"})
-tG2:addDivider()
+tG1:addKeybind({text = "Set Target Key", flag = "target_set_kb", key = Enum.KeyCode.Q})
+tG1:addKeybind({text = "Autokill Key", flag = "autokill_kb", key = Enum.KeyCode.E})
+tG1:addButton({text = "Clear Target", callback = function() 
+    clearTarget() 
+    library:notify("Target cleared")
+end})
 
 -- ============================================================
 -- HEALTH ESP toggle in visuals tab
