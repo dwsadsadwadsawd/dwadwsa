@@ -1857,9 +1857,25 @@ local function getClosestPlayer()
                     dist = diff
                 end
             end
-        end
-    end
-    return closest
+end
+
+-- ANIMATION LOGIC
+local activeAnim = nil
+local function playAnimation(id)
+    if not getHumanoid() then return end
+    if activeAnim then activeAnim:Stop() end
+    
+    local anim = Instance.new("Animation")
+    anim.AnimationId = "rbxassetid://" .. id
+    
+    activeAnim = getHumanoid():LoadAnimation(anim)
+    activeAnim.Priority = Enum.AnimationPriority.Action
+    activeAnim:Play()
+    activeAnim:AdjustSpeed(library.flags["anim_speed"] or 1)
+end
+
+local function stopAnimation()
+    if activeAnim then activeAnim:Stop() activeAnim = nil end
 end
 
 local oldIndex
@@ -1901,6 +1917,13 @@ end)
 -- ESP LOGIC
 local function createESP(plr)
     if not Drawing then return end
+    local boxOutline = Drawing.new("Square")
+    boxOutline.Visible = false
+    boxOutline.Color = Color3.new(0,0,0)
+    boxOutline.Thickness = 3
+    boxOutline.Transparency = 1
+    boxOutline.Filled = false
+
     local box = Drawing.new("Square")
     box.Visible = false
     box.Color = library.libColor
@@ -1931,14 +1954,27 @@ local function createESP(plr)
                 
                 if onScreen and (library.flags["esp_enabled"] or false) then
                     local dist = (workspace.CurrentCamera.CFrame.Position - hrp.Position).Magnitude
-                    local size = (workspace.CurrentCamera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0)).Y - workspace.CurrentCamera:WorldToViewportPoint(hrp.Position + Vector3.new(0, 2.6, 0)).Y)
-                    local boxSize = Vector2.new(size * 0.6, size)
-                    local boxPos = Vector2.new(pos.X - boxSize.X / 2, pos.Y - boxSize.Y / 2)
+                    
+                    -- Precise Bounding Box Calculations
+                    local head = plr.Character:FindFirstChild("Head")
+                    local root = plr.Character:FindFirstChild("HumanoidRootPart")
+                    if head and root then
+                        local headPos = workspace.CurrentCamera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+                        local legPos = workspace.CurrentCamera:WorldToViewportPoint(root.Position - Vector3.new(0, 3, 0))
+                        
+                        local height = math.abs(headPos.Y - legPos.Y)
+                        local width = height * 0.6
+                        local boxSize = Vector2.new(width, height)
+                        local boxPos = Vector2.new(pos.X - width / 2, pos.Y - height / 2)
 
-                    box.Visible = (library.flags["esp_box"] or false)
-                    box.Size = boxSize
-                    box.Position = boxPos
-                    box.Color = library.libColor
+                        boxOutline.Visible = (library.flags["esp_box"] or false)
+                        boxOutline.Size = boxSize
+                        boxOutline.Position = boxPos
+                        
+                        box.Visible = (library.flags["esp_box"] or false)
+                        box.Size = boxSize
+                        box.Position = boxPos
+                        box.Color = library.libColor
 
                     name.Visible = (library.flags["esp_name"] or false)
                     name.Text = plr.Name .. " [" .. math.floor(dist) .. "m]"
@@ -1954,10 +1990,12 @@ local function createESP(plr)
                     tracer.Visible = false
                 end
             else
+                boxOutline.Visible = false
                 box.Visible = false
                 name.Visible = false
                 tracer.Visible = false
                 if not plr or not plr.Parent then
+                    boxOutline:Remove()
                     box:Remove()
                     name:Remove()
                     tracer:Remove()
@@ -1981,7 +2019,49 @@ players.PlayerAdded:Connect(createESP)
 -- ============================================================
 local rageTab = library:addTab("Rage")
 local visualsTab = library:addTab("Visuals")
+local animationsTab = library:addTab("Animations")
 local settingsTab = library:addTab("Settings")
+
+-- VISUALS TAB ENHANCEMENT (Preview)
+local vG2 = visualsTab:createGroup('right', 'Preview')
+local previewFrame = Instance.new("ViewportFrame")
+previewFrame.Size = UDim2.new(0, 200, 0, 250)
+previewFrame.BackgroundTransparency = 1
+previewFrame.Parent = vG2.Parent -- Parenting to the grouper container
+
+-- VIEWPORT LOGIC
+local function updatePreview()
+    previewFrame:ClearAllChildren()
+    local char = localPlayer.Character
+    if char then
+        char.Archivable = true
+        local clone = char:Clone()
+        local root = clone:FindFirstChild("HumanoidRootPart")
+        if root then
+            clone.Parent = previewFrame
+            local cam = Instance.new("Camera")
+            cam.CFrame = CFrame.new(root.Position + root.CFrame.LookVector * 5 + Vector3.new(0, 1, 0), root.Position)
+            previewFrame.CurrentCamera = cam
+            cam.Parent = previewFrame
+            
+            -- Preview Box
+            local pBox = Instance.new("Frame", previewFrame)
+            pBox.Size = UDim2.new(0, 100, 0, 180)
+            pBox.Position = UDim2.new(0.5, -50, 0.5, -90)
+            pBox.BackgroundTransparency = 1
+            pBox.BorderColor3 = library.libColor
+            pBox.BorderSizePixel = 2
+            pBox.Visible = library.flags["esp_box"] or false
+        end
+    end
+end
+task.spawn(function()
+    while task.wait(1) do
+        if menu.Enabled and visualsTab.Visible then
+            pcall(updatePreview)
+        end
+    end
+end)
 
 -- RAGE TAB
 local rG1 = rageTab:createGroup('left', 'Movement')
@@ -2023,5 +2103,19 @@ confGroup:addButton({text = "Refresh", callback = library.refreshConfigs})
 local miscGroup = settingsTab:createGroup('right', 'Other')
 miscGroup:addButton({text = "Rejoin Server", callback = function() game:GetService("TeleportService"):Teleport(game.PlaceId, localPlayer) end})
 miscGroup:addButton({text = "Server Hop", callback = function() library:notify("Hopping...") end})
+
+-- ANIMATIONS TAB UI
+local aG1 = animationsTab:createGroup('left', 'Dance Emotes')
+aG1:addButton({text = "Robot", callback = function() playAnimation(3333331484) end})
+aG1:addButton({text = "Dance 1", callback = function() playAnimation(3333331397) end})
+aG1:addButton({text = "Dance 2", callback = function() playAnimation(3333331427) end})
+aG1:addButton({text = "Dance 3", callback = function() playAnimation(3333331455) end})
+aG1:addButton({text = "Shuffle", callback = function() playAnimation(4351184762) end})
+aG1:addButton({text = "Stop Animation", callback = stopAnimation})
+
+local aG2 = animationsTab:createGroup('right', 'Settings')
+aG2:addSlider({text = "Animation Speed", flag = "anim_speed", min = 0, max = 10, value = 1, callback = function(v)
+    if activeAnim then activeAnim:AdjustSpeed(v) end
+end})
 
 library:notify("Lethal.xyz Loaded - Press RSHIFT to toggle")
