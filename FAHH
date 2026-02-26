@@ -148,7 +148,15 @@ function library:addTab(name)
 
         groupCount -= 1
 
-        groupbox.Parent = newTab[pos]
+        local container = newTab[pos]
+        if not container:FindFirstChildOfClass("UIListLayout") then
+            local layout = Instance.new("UIListLayout", container)
+            layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+            layout.SortOrder = Enum.SortOrder.LayoutOrder
+            layout.Padding = UDim.new(0, 10)
+        end
+
+        groupbox.Parent = container
         groupbox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         groupbox.BorderColor3 = Color3.fromRGB(30, 30, 30)
         groupbox.BorderSizePixel = 2
@@ -1771,32 +1779,35 @@ local function startFly()
     if not library.flags["fly_enabled"] then return end
     local root = getRoot()
     if not root then return end
-    library.bv = Instance.new("BodyVelocity", root)
-    library.bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-    library.bg = Instance.new("BodyGyro", root)
-    library.bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-    getHumanoid().PlatformStand = true
+    
+    -- Non-smooth, animation-friendly Fly
     library.flyC = runService.Heartbeat:Connect(function()
+        if not library.flags["fly_enabled"] or not getRoot() then 
+            stopFly() 
+            return 
+        end
+        
+        local root = getRoot()
+        local camera = workspace.CurrentCamera
+        local speed = tonumber(library.flags["fly_speed"] or 150) / 100
+        
         local move = Vector3.zero
-        if inputService:IsKeyDown(Enum.KeyCode.W) then move += workspace.CurrentCamera.CFrame.LookVector end
-        if inputService:IsKeyDown(Enum.KeyCode.S) then move -= workspace.CurrentCamera.CFrame.LookVector end
-        if inputService:IsKeyDown(Enum.KeyCode.A) then move -= workspace.CurrentCamera.CFrame.RightVector end
-        if inputService:IsKeyDown(Enum.KeyCode.D) then move += workspace.CurrentCamera.CFrame.RightVector end
+        if inputService:IsKeyDown(Enum.KeyCode.W) then move += camera.CFrame.LookVector end
+        if inputService:IsKeyDown(Enum.KeyCode.S) then move -= camera.CFrame.LookVector end
+        if inputService:IsKeyDown(Enum.KeyCode.A) then move -= camera.CFrame.RightVector end
+        if inputService:IsKeyDown(Enum.KeyCode.D) then move += camera.CFrame.RightVector end
         
         if move.Magnitude > 0 then
-            library.bv.Velocity = move.Unit * (library.flags["fly_speed"] or 150)
-        else
-            library.bv.Velocity = Vector3.zero
+            root.CFrame = root.CFrame + (move * speed)
         end
-        library.bg.CFrame = workspace.CurrentCamera.CFrame
+        
+        -- Keeps character in "falling" animation and prevents actual falling
+        root.Velocity = Vector3.new(0, -0.01, 0)
     end)
 end
 
 local function stopFly()
-    if library.flyC then library.flyC:Disconnect() end
-    if library.bv then library.bv:Destroy() end
-    if library.bg then library.bg:Destroy() end
-    if getHumanoid() then getHumanoid().PlatformStand = false end
+    if library.flyC then library.flyC:Disconnect() library.flyC = nil end
 end
 
 local function toggleNoclip()
