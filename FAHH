@@ -6,6 +6,10 @@ local players        = game:GetService("Players")
 local localPlayer    = players.LocalPlayer
 local mouse          = localPlayer:GetMouse()
 
+-- SAFETY GLOBALS
+local checkcaller = checkcaller or function() return false end
+local Drawing = Drawing or {new = function() return setmetatable({}, {__index = function() return function() end end}) end}
+
 local menu           = game:GetObjects("rbxassetid://12702460854")[1]
 if gethui then
     menu.Parent = gethui()
@@ -17,7 +21,16 @@ else
 end
 menu.bg.Position     = UDim2.new(0.5,-menu.bg.Size.X.Offset/2,0.5,-menu.bg.Size.Y.Offset/2)
 menu.bg.pre.Text = 'Lethal<font color="#ff0000">.xyz</font> - Rage Edition'
-local library = {cheatname = "Lethal";ext = ".xyz";gamename = "Rage Edition";colorpicking = false;tabbuttons = {};tabs = {};options = {};flags = {};scrolling = false;notifyText = Drawing.new("Text");playing = false;multiZindex = 200;toInvis = {};libColor = Color3.fromRGB(255, 0, 0);disabledcolor = Color3.fromRGB(150, 0, 0);blacklisted = {Enum.KeyCode.W,Enum.KeyCode.A,Enum.KeyCode.S,Enum.KeyCode.D,Enum.UserInputType.MouseMovement}}
+local library = {cheatname = "Lethal";ext = ".xyz";gamename = "Rage Edition";colorpicking = false;tabbuttons = {};tabs = {};options = {};flags = {};scrolling = false;playing = false;multiZindex = 200;toInvis = {};libColor = Color3.fromRGB(255, 0, 0);disabledcolor = Color3.fromRGB(150, 0, 0);blacklisted = {Enum.KeyCode.W,Enum.KeyCode.A,Enum.KeyCode.S,Enum.KeyCode.D,Enum.UserInputType.MouseMovement}}
+
+pcall(function()
+    library.notifyText = Drawing.new("Text")
+    library.notifyText.Font = 2
+    library.notifyText.Size = 13
+    library.notifyText.Outline = true
+    library.notifyText.Color = Color3.new(1,1,1)
+    library.notifyText.Position = Vector2.new(10,60)
+end)
 
 function draggable(a)local b=inputService;local c;local d;local e;local f;local function g(h)if not library.colorpicking then local i=h.Position-e;a.Position=UDim2.new(f.X.Scale,f.X.Offset+i.X,f.Y.Scale,f.Y.Offset+i.Y)end end;a.InputBegan:Connect(function(h)if h.UserInputType==Enum.UserInputType.MouseButton1 or h.UserInputType==Enum.UserInputType.Touch then c=true;e=h.Position;f=a.Position;h.Changed:Connect(function()if h.UserInputState==Enum.UserInputState.End then c=false end end)end end)a.InputChanged:Connect(function(h)if h.UserInputType==Enum.UserInputType.MouseMovement or h.UserInputType==Enum.UserInputType.Touch then d=h end end)b.InputChanged:Connect(function(h)if h==d and c then g(h)end end)end
 draggable(menu.bg)
@@ -1651,8 +1664,11 @@ function library:createConfig()
             jig[i] = v
         end
     end
-    writefile("OsirisCFGS/"..name..".cfg",game:GetService("HttpService"):JSONEncode(jig))
-    library:notify("Succesfully created config "..name..".cfg!")
+    pcall(function()
+        if not isfolder("OsirisCFGS") then makefolder("OsirisCFGS") end
+        writefile("OsirisCFGS/"..name..".cfg",game:GetService("HttpService"):JSONEncode(jig))
+        library:notify("Succesfully created config "..name..".cfg!")
+    end)
     library:refreshConfigs()
 end
 
@@ -1669,18 +1685,23 @@ function library:saveConfig()
             jig[i] = v
         end
     end
-    writefile("OsirisCFGS/"..name..".cfg",game:GetService("HttpService"):JSONEncode(jig))
-    library:notify("Succesfully updated config "..name..".cfg!")
+    pcall(function()
+        if not isfolder("OsirisCFGS") then makefolder("OsirisCFGS") end
+        writefile("OsirisCFGS/"..name..".cfg",game:GetService("HttpService"):JSONEncode(jig))
+        library:notify("Succesfully updated config "..name..".cfg!")
+    end)
     library:refreshConfigs()
 end
 
 function library:loadConfig()
-    local name = library.flags["selected_config"]
-    if not isfile("OsirisCFGS/"..name..".cfg") then
-        library:notify("Config file not found!")
+    local success, config = pcall(function()
+        if not isfile("OsirisCFGS/"..name..".cfg") then return nil end
+        return game:GetService("HttpService"):JSONDecode(readfile("OsirisCFGS/"..name..".cfg"))
+    end)
+    if not success or not config then
+        library:notify("Config file not found or invalid!")
         return
     end
-    local config = game:GetService("HttpService"):JSONDecode(readfile("OsirisCFGS/"..name..".cfg"))
     for i,v in next, library.options do
         spawn(function()pcall(function()
             if config[i] then
@@ -1715,17 +1736,22 @@ end
 
 function library:refreshConfigs()
     local tbl = {}
-    for i,v in next, listfiles("OsirisCFGS") do
-        table.insert(tbl,v)
-    end
+    pcall(function()
+        for i,v in next, listfiles("OsirisCFGS") do
+            table.insert(tbl,v)
+        end
+    end)
     library.options["selected_config"].refresh(tbl)
 end
 
 function library:deleteConfig()
-    if isfile("OsirisCFGS/"..library.flags["selected_config"]..".cfg") then
-        delfile("OsirisCFGS/"..library.flags["selected_config"]..".cfg")
-        library:refreshConfigs()
-    end
+    pcall(function()
+        local name = library.flags["selected_config"]
+        if isfile("OsirisCFGS/"..name..".cfg") then
+            delfile("OsirisCFGS/"..name..".cfg")
+            library:refreshConfigs()
+        end
+    end)
 end
 -- ============================================================
 -- BACKEND LOGIC (RAGE FEATURES)
