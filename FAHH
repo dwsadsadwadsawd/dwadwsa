@@ -1858,6 +1858,59 @@ task.spawn(function()
     end
 end)
 
+
+-- INF JUMP
+local jumpConn
+inputService.JumpRequest:Connect(function()
+    if library.flags["inf_jump_enabled"] then
+        local hum = getHumanoid()
+        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+    end
+end)
+
+-- BHOP
+task.spawn(function()
+    while task.wait() do
+        if library.flags["bhop_enabled"] then
+            local hum = getHumanoid()
+            if hum and hum.FloorMaterial ~= Enum.Material.Air then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end
+    end
+end)
+
+-- ANTI VOID
+task.spawn(function()
+    while task.wait(0.1) do
+        if library.flags["anti_void_enabled"] then
+            local root = getRoot()
+            if root and root.Position.Y < -100 then
+                root.CFrame = CFrame.new(root.Position.X, 10, root.Position.Z)
+            end
+        end
+    end
+end)
+
+-- FAKE LAG
+local fakeLagConn
+task.spawn(function()
+    while task.wait() do
+        if library.flags["fake_lag_enabled"] then
+            local root = getRoot()
+            if root then
+                local savedCF = root.CFrame
+                for i = 1, (library.flags["fake_lag_amount"] or 5) do
+                    runService.Heartbeat:Wait()
+                end
+                if root and root.Parent then
+                    root.CFrame = savedCF
+                end
+            end
+        end
+    end
+end)
+
 -- FOV CIRCLE
 local fovCircleOutline = Drawing.new("Circle")
 fovCircleOutline.Visible = false
@@ -2159,6 +2212,33 @@ rG2:addSlider({text = "Spin Speed", flag = "spin_speed", min = 1, max = 500, val
 rG2:addDivider()
 rG2:addToggle({text = "Triggerbot", flag = "triggerbot_enabled"})
 rG2:addSlider({text = "Trigger Delay (ms)", flag = "triggerbot_delay", min = 0, max = 500, value = 0})
+
+
+-- RAGE TAB RIGHT COLUMN
+local rG3 = rageTab:createGroup('right', 'Player')
+rG3:addToggle({text = "Inf Jump", flag = "inf_jump_enabled"})
+rG3:addToggle({text = "Anti Void", flag = "anti_void_enabled"})
+rG3:addToggle({text = "Bunny Hop", flag = "bhop_enabled"})
+rG3:addDivider()
+rG3:addToggle({text = "Fake Lag", flag = "fake_lag_enabled"})
+rG3:addSlider({text = "Fake Lag Amount", flag = "fake_lag_amount", min = 1, max = 20, value = 5})
+
+local rG4 = rageTab:createGroup('right', 'Visual Mods')
+rG4:addToggle({text = "Fullbright", flag = "fullbright_enabled", callback = function(s)
+    game:GetService("Lighting").Brightness = s and 10 or 1
+    game:GetService("Lighting").GlobalShadows = not s
+end})
+rG4:addToggle({text = "No Fog", flag = "no_fog_enabled", callback = function(s)
+    game:GetService("Lighting").FogEnd = s and 999999 or 100000
+end})
+rG4:addToggle({text = "Thirdperson", flag = "thirdperson_enabled", callback = function(s)
+    if s then
+        workspace.CurrentCamera.CameraSubject = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") or workspace.CurrentCamera.CameraSubject
+    end
+end})
+rG4:addSlider({text = "FOV", flag = "custom_fov", min = 70, max = 120, value = 70, callback = function(v)
+    workspace.CurrentCamera.FieldOfView = v
+end})
 
 -- VISUALS TAB
 local vG1 = visualsTab:createGroup('left', 'ESP')
@@ -2490,7 +2570,7 @@ end)
 -- TARGET TAB UI
 -- ============================================================
 
-local tG1 = rageTab:createGroup('right', 'Target')
+local tG1 = rageTab:createGroup('left', 'Target')
 tG1:addToggle({text = "Target Master Switch", flag = "target_master", callback = function(s)
     if not s then clearTarget() end
 end})
@@ -2500,7 +2580,7 @@ tG1:addKeybind({text = "Set Target", flag = "target_set_kb", key = Enum.KeyCode.
 tG1:addKeybind({text = "Engage / Disengage", flag = "target_engage_kb", key = Enum.KeyCode.E})
 tG1:addButton({text = "Clear Target", callback = function() clearTarget() library:notify("Target cleared") end})
 
-local tG2 = rageTab:createGroup('right', 'Autokill')
+local tG2 = rageTab:createGroup('left', 'Autokill')
 tG2:addToggle({text = "Autokill", flag = "target_autokill"})
 tG2:addDivider()
 
