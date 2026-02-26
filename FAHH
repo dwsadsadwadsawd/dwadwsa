@@ -2100,6 +2100,7 @@ players.PlayerAdded:Connect(createESP)
 local rageTab = library:addTab("Rage")
 local visualsTab = library:addTab("Visuals")
 local animationsTab = library:addTab("Animations")
+local targetTab = library:addTab("Target")
 local settingsTab = library:addTab("Settings")
 
 -- VISUALS TAB ENHANCEMENT (Preview)
@@ -2489,7 +2490,6 @@ end)
 -- ============================================================
 -- TARGET TAB UI
 -- ============================================================
-local targetTab = library:addTab("Target")
 
 local tG1 = targetTab:createGroup('left', 'Master')
 tG1:addToggle({text = "Target Master Switch", flag = "target_master", callback = function(s)
