@@ -2100,7 +2100,6 @@ players.PlayerAdded:Connect(createESP)
 local rageTab = library:addTab("Rage")
 local visualsTab = library:addTab("Visuals")
 local animationsTab = library:addTab("Animations")
-local targetTab = library:addTab("Target")
 local settingsTab = library:addTab("Settings")
 
 -- VISUALS TAB ENHANCEMENT (Preview)
@@ -2491,7 +2490,7 @@ end)
 -- TARGET TAB UI
 -- ============================================================
 
-local tG1 = targetTab:createGroup('left', 'Master')
+local tG1 = rageTab:createGroup('right', 'Target')
 tG1:addToggle({text = "Target Master Switch", flag = "target_master", callback = function(s)
     if not s then clearTarget() end
 end})
@@ -2501,7 +2500,7 @@ tG1:addKeybind({text = "Set Target", flag = "target_set_kb", key = Enum.KeyCode.
 tG1:addKeybind({text = "Engage / Disengage", flag = "target_engage_kb", key = Enum.KeyCode.E})
 tG1:addButton({text = "Clear Target", callback = function() clearTarget() library:notify("Target cleared") end})
 
-local tG2 = targetTab:createGroup('left', 'Autokill')
+local tG2 = rageTab:createGroup('right', 'Autokill')
 tG2:addToggle({text = "Autokill", flag = "target_autokill"})
 tG2:addDivider()
 
