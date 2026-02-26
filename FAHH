@@ -1971,19 +1971,39 @@ local function createESP(plr)
                 if onScreen and (library.flags["esp_enabled"] or false) then
                     local dist = (workspace.CurrentCamera.CFrame.Position - hrp.Position).Magnitude
                     
-                    -- Tight Vertical ESP Bounding Box
+                    -- True Body Part ESP Calculation
                     local char = plr.Character
-                    local head = char:FindFirstChild("Head")
-                    local root = char:FindFirstChild("HumanoidRootPart")
+                    local minX, minY, maxX, maxY = math.huge, math.huge, -math.huge, -math.huge
+                    local foundParts = false
                     
-                    if head and root then
-                        local headPos = workspace.CurrentCamera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.8, 0))
-                        local legPos = workspace.CurrentCamera:WorldToViewportPoint(root.Position - Vector3.new(0, 3, 0))
-                        
-                        local height = math.abs(headPos.Y - legPos.Y)
-                        local width = height / 1.5
-                        local boxSize = Vector2.new(width, height)
-                        local boxPos = Vector2.new(headPos.X - width/2, headPos.Y)
+                    for _, v in pairs(char:GetChildren()) do
+                        if v:IsA("BasePart") and v.Transparency < 1 then
+                            foundParts = true
+                            local cf = v.CFrame
+                            local size = v.Size
+                            local corners = {
+                                cf * CFrame.new(-size.X/2, -size.Y/2, -size.Z/2),
+                                cf * CFrame.new(size.X/2, -size.Y/2, -size.Z/2),
+                                cf * CFrame.new(-size.X/2, size.Y/2, -size.Z/2),
+                                cf * CFrame.new(size.X/2, size.Y/2, -size.Z/2),
+                                cf * CFrame.new(-size.X/2, -size.Y/2, size.Z/2),
+                                cf * CFrame.new(size.X/2, -size.Y/2, size.Z/2),
+                                cf * CFrame.new(-size.X/2, size.Y/2, size.Z/2),
+                                cf * CFrame.new(size.X/2, size.Y/2, size.Z/2)
+                            }
+                            for _, corner in pairs(corners) do
+                                local p, onS = workspace.CurrentCamera:WorldToViewportPoint(corner.Position)
+                                minX = math.min(minX, p.X)
+                                minY = math.min(minY, p.Y)
+                                maxX = math.max(maxX, p.X)
+                                maxY = math.max(maxY, p.Y)
+                            end
+                        end
+                    end
+                    
+                    if foundParts then
+                        local boxSize = Vector2.new(maxX - minX, maxY - minY)
+                        local boxPos = Vector2.new(minX, minY)
 
                         -- Perfect 1-pixel Manual Outline
                         boxOutline.Visible = (library.flags["esp_box"] or false)
@@ -1998,11 +2018,11 @@ local function createESP(plr)
 
                         name.Visible = (library.flags["esp_name"] or false)
                         name.Text = plr.Name .. " [" .. math.floor(dist) .. "m]"
-                        name.Position = Vector2.new(boxPos.X + width/2, boxPos.Y - 15)
+                        name.Position = Vector2.new(minX + (maxX - minX) / 2, minY - 15)
 
                         tracer.Visible = (library.flags["esp_tracer"] or false)
                         tracer.From = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y)
-                        tracer.To = Vector2.new(boxPos.X + width/2, boxPos.Y + height)
+                        tracer.To = Vector2.new(minX + (maxX - minX) / 2, maxY)
                         tracer.Color = library.libColor
                     else
                         boxOutline.Visible = false
