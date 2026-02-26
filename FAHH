@@ -121,6 +121,7 @@ function library:addTab(name)
         end
         for i,v in next, library.tabbuttons do
             local state = v == newButton
+            v.element.BackgroundColor3 = library.libColor -- Force Red
             if state then
                 v.element.Visible = true
                 library:Tween(v.element, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0.000})
@@ -285,6 +286,7 @@ function library:addTab(name)
                 state = newState
                 library.flags[args.flag] = state
                 front.BackgroundColor3 = state and library.libColor or Color3.fromRGB(15,15,15)
+                front.BackgroundTransparency = state and 0 or 0 -- Pure color
                 text.TextColor3 = state and Color3.fromRGB(244, 244, 244) or Color3.fromRGB(144, 144, 144)
                 if args.callback then
                     args.callback(state)
@@ -292,14 +294,7 @@ function library:addTab(name)
             end
             button.MouseButton1Click:Connect(function()
                 state = not state
-                front.Name = state and "accent" or "back"
-                library.flags[args.flag] = state
-                mid.BorderColor3 = Color3.fromRGB(30,30,30)
-                front.BackgroundColor3 = state and library.libColor or Color3.fromRGB(15,15,15)
-                text.TextColor3 = state and Color3.fromRGB(244, 244, 244) or Color3.fromRGB(144, 144, 144)
-                if args.callback then
-                    args.callback(state)
-                end
+                toggle(state)
             end)
             button.MouseEnter:connect(function()
                 mid.BorderColor3 = library.libColor
@@ -310,8 +305,8 @@ function library:addTab(name)
 
             library.flags[args.flag] = false
             library.options[args.flag] = {type = "toggle",changeState = toggle,skipflag = args.skipflag,oldargs = args}
-            local toggle = {}
-            function toggle:addKeybind(args)
+            local toggleObj = {}
+            function toggleObj:addKeybind(args)
                 if not args.flag then return warn("⚠️ incorrect arguments ⚠️ - missing args on toggle:keybind") end
                 local next = false
                 
@@ -354,8 +349,8 @@ function library:addTab(name)
                             button.TextColor3 = Color3.fromRGB(155, 155, 155)
                         end
                     end
-                    if not next and key == library.flags[args.flag] and args.callback then
-                        args.callback()
+                    if not next and key == library.flags[args.flag] then
+                        toggle(not state)
                     end
                 end)
     
@@ -372,7 +367,7 @@ function library:addTab(name)
     
                 updateValue(args.key or Enum.KeyCode.Unknown)
             end
-            function toggle:addColorpicker(args)
+            function toggleObj:addColorpicker(args)
                 if not args.flag and args.text then args.flag = args.text end
                 if not args.flag then return warn("⚠️ incorrect arguments ⚠️") end
                 local colorpicker = Instance.new("Frame")
@@ -600,7 +595,7 @@ function library:addTab(name)
 
                 updateValue(args.color or Color3.new(1,1,1))
             end
-            return toggle
+            return toggleObj
         end
         function group:addButton(args)
             if not args.callback or not args.text then return warn("⚠️ incorrect arguments ⚠️") end
@@ -745,6 +740,7 @@ function library:addTab(name)
 			local scrolling = false
 			local amount = 0
 
+            local sub = args.suffix or ""
             local function updateValue(value)
                 if library.colorpicking then return end
 				if value ~= 0 then
@@ -752,6 +748,7 @@ function library:addTab(name)
 				else
 					fill:TweenSize(UDim2.new(0,1,1,0),Enum.EasingDirection.In,Enum.EasingStyle.Sine,0.01)
                 end
+                fill.BackgroundTransparency = 0 -- Fix pink look
                 valuetext.Text = value..sub
                 library.flags[args.flag] = value
                 if args.callback then
@@ -1801,17 +1798,15 @@ local function startFly()
         
         if move.Magnitude > 0 then
             root.CFrame = root.CFrame + (move * speed)
-            -- Keeps character in "falling" animation and prevents actual falling
-            root.Velocity = Vector3.new(0, -0.01, 0)
-        else
-            -- Perfectly stationary
-            root.Velocity = Vector3.new(0, 0, 0)
         end
+        -- Keeps character in "falling" animation and resets gravity drift
+        root.Velocity = Vector3.new(0, 0, 0)
     end)
 end
 
 local function stopFly()
     if library.flyC then library.flyC:Disconnect() library.flyC = nil end
+    if getHumanoid() then getHumanoid().PlatformStand = false end
 end
 
 local function toggleNoclip()
