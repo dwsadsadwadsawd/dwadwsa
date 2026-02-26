@@ -1815,7 +1815,7 @@ local function startFly()
         end
         
         -- Aggressive Physics Reset to stop drifting
-        cHum:ChangeState(Enum.HumanoidStateType.Falling)
+        cHum:ChangeState(Enum.HumanoidStateType.Freefall)
         cRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
         cRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
     end)
