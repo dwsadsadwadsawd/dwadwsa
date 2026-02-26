@@ -1,4 +1,3 @@
-
 local inputService   = game:GetService("UserInputService")
 local runService     = game:GetService("RunService")
 local tweenService   = game:GetService("TweenService")
@@ -1794,6 +1793,12 @@ local function startFly()
     -- Disable falling animation
     hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, false)
     
+    local bv = root:FindFirstChild("FlyBV") or Instance.new("BodyVelocity")
+    bv.Name = "FlyBV"
+    bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    bv.Velocity = Vector3.new(0, 0, 0)
+    bv.Parent = root
+
     -- Non-smooth, animation-friendly Fly
     library.flyC = runService.Heartbeat:Connect(function()
         local cRoot = getRoot()
@@ -1824,6 +1829,11 @@ end
 
 local function stopFly()
     if library.flyC then library.flyC:Disconnect() library.flyC = nil end
+    local root = getRoot()
+    if root then
+        local bv = root:FindFirstChild("FlyBV")
+        if bv then bv:Destroy() end
+    end
     local hum = getHumanoid()
     if hum then 
         hum.PlatformStand = false 
@@ -1866,7 +1876,7 @@ fovCircle.Color = library.libColor
 
 runService.RenderStepped:Connect(function()
     local mouseLoc = inputService:GetMouseLocation()
-    local showFov = (library.flags["silent_aim_showfov"] or false) and (library.flags["silent_aim"] or false)
+    local showFov = (library.flags["silent_aim_showfov"] or false) and (library.flags["silent_aim_enabled"] or false)
     local fovRadius = tonumber(library.flags["silent_aim_fov"] or 100)
     
     fovCircleOutline.Visible = showFov
@@ -1879,7 +1889,7 @@ runService.RenderStepped:Connect(function()
     fovCircle.Color = library.libColor
 end)
 
--- SILENT AIM LOGIC
+-- SILENT AIM LOGIC - FIXED VERSION
 local function getClosestPlayer()
     local closest, dist = nil, (library.flags["silent_aim_fov"] or 100)
     for _, v in pairs(players:GetPlayers()) do
@@ -1895,6 +1905,36 @@ local function getClosestPlayer()
         end
     end
     return closest
+end
+
+-- FIXED: Silent aim that doesn't break first-person camera
+local oldIndex
+if hookmetamethod then
+    oldIndex = hookmetamethod(game, "__index", function(self, index)
+        if not checkcaller() and library.flags["silent_aim_enabled"] then
+            -- Only override when in third-person or when specifically forced
+            if self == mouse and (index == "Hit" or index == "Target") then
+                -- Check if we're in first-person (camera is locked to character)
+                local camera = workspace.CurrentCamera
+                local isFirstPerson = camera and (camera.CameraType == Enum.CameraType.LockFirstPerson or 
+                                                  camera.CameraType == Enum.CameraType.Scriptable and 
+                                                  (camera.CFrame.Position - (getRoot() and getRoot().Position or Vector3.new())).Magnitude < 5)
+                
+                -- Only override if NOT in first-person mode
+                if not isFirstPerson then
+                    local target = getClosestPlayer()
+                    if target and target.Character and target.Character:FindFirstChild("Head") then
+                        if index == "Hit" then
+                            return target.Character.Head.CFrame
+                        elseif index == "Target" then
+                            return target.Character.Head
+                        end
+                    end
+                end
+            end
+        end
+        return oldIndex(self, index)
+    end)
 end
 
 -- ANIMATION LOGIC
@@ -1916,20 +1956,6 @@ local function stopAnimation()
     if activeAnim then activeAnim:Stop() activeAnim = nil end
 end
 
-local oldIndex
-if hookmetamethod then
-    oldIndex = hookmetamethod(game, "__index", function(self, index)
-        if not checkcaller() and library.flags["silent_aim"] then
-            if self == mouse and (index == "Hit" or index == "Target") then
-                local target = getClosestPlayer()
-                if target and target.Character and target.Character:FindFirstChild("Head") then
-                    return (index == "Hit" and target.Character.Head.CFrame or target.Character.Head)
-                end
-            end
-        end
-        return oldIndex(self, index)
-    end)
-end
 -- TRIGGERBOT LOGIC
 task.spawn(function()
     while task.wait() do
@@ -2141,7 +2167,7 @@ rG1:addToggle({text = "Speed Hack", flag = "speed_h", callback = function(s) if 
 rG1:addSlider({text = "WalkSpeed", flag = "ws_val", min = 16, max = 500, value = 100})
 
 local rG2 = rageTab:createGroup('left', 'Combat')
-rG2:addToggle({text = "Silent Aim", flag = "silent_aim"})
+rG2:addToggle({text = "Silent Aim", flag = "silent_aim_enabled"})
 rG2:addToggle({text = "Show FOV", flag = "silent_aim_showfov"})
 rG2:addSlider({text = "FOV Size", flag = "silent_aim_fov", min = 1, max = 800, value = 100})
 rG2:addDivider()
