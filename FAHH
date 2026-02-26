@@ -1790,16 +1790,18 @@ local function getHumanoid() return getCharacter() and getCharacter():FindFirstC
 local function startFly()
     if not library.flags["fly_enabled"] then return end
     local root = getRoot()
-    if not root then return end
+    local hum = getHumanoid()
+    if not root or not hum then return end
     
     -- Non-smooth, animation-friendly Fly
     library.flyC = runService.Heartbeat:Connect(function()
-        if not library.flags["fly_enabled"] or not getRoot() then 
+        local cRoot = getRoot()
+        local cHum = getHumanoid()
+        if not library.flags["fly_enabled"] or not cRoot or not cHum then 
             stopFly() 
             return 
         end
         
-        local root = getRoot()
         local camera = workspace.CurrentCamera
         local speed = tonumber(library.flags["fly_speed"] or 150) / 100
         
@@ -1810,16 +1812,20 @@ local function startFly()
         if inputService:IsKeyDown(Enum.KeyCode.D) then move += camera.CFrame.RightVector end
         
         if move.Magnitude > 0 then
-            root.CFrame = root.CFrame + (move * speed)
+            cRoot.CFrame = cRoot.CFrame + (move * speed)
         end
-        -- Reset velocity to zero to stop any falling/gravity drift
-        root.Velocity = Vector3.new(0, 0, 0)
+        
+        -- Aggressive Physics Reset to stop drifting
+        cHum.PlatformStand = true
+        cRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        cRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
     end)
 end
 
 local function stopFly()
     if library.flyC then library.flyC:Disconnect() library.flyC = nil end
-    if getHumanoid() then getHumanoid().PlatformStand = false end
+    local hum = getHumanoid()
+    if hum then hum.PlatformStand = false end
 end
 
 local function toggleNoclip()
