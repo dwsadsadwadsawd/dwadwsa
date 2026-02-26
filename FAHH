@@ -1907,18 +1907,28 @@ local function getClosestPlayer()
     return closest
 end
 
--- FIXED: Silent aim that doesn't break first-person camera
 local oldIndex
 if hookmetamethod then
     oldIndex = hookmetamethod(game, "__index", function(self, index)
         if not checkcaller() and library.flags["silent_aim_enabled"] then
             -- Only override when in third-person or when specifically forced
             if self == mouse and (index == "Hit" or index == "Target") then
-                -- Check if we're in first-person (camera is locked to character)
+                -- Check if we're in first-person by looking at camera mode and relative position
                 local camera = workspace.CurrentCamera
-                local isFirstPerson = camera and (camera.CameraType == Enum.CameraType.LockFirstPerson or 
-                                                  camera.CameraType == Enum.CameraType.Scriptable and 
-                                                  (camera.CFrame.Position - (getRoot() and getRoot().Position or Vector3.new())).Magnitude < 5)
+                local rootPart = getRoot()
+                
+                -- Better first-person detection:
+                -- 1. Camera mode is Custom or Scriptable (common in first-person games)
+                -- 2. Camera is very close to the character's head position
+                local isFirstPerson = false
+                if camera and rootPart then
+                    local head = getCharacter() and getCharacter():FindFirstChild("Head")
+                    if head then
+                        local camToHead = (camera.CFrame.Position - head.Position).Magnitude
+                        -- If camera is within 3 studs of head, likely first-person
+                        isFirstPerson = camToHead < 3
+                    end
+                end
                 
                 -- Only override if NOT in first-person mode
                 if not isFirstPerson then
