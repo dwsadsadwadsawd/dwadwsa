@@ -1940,7 +1940,19 @@ runService.RenderStepped:Connect(function()
 end)
 
 -- SILENT AIM
+local currentTarget = nil
+local fakePresenceActive = false
+local autokillActive = false
+local killLoopRunning = false
+-- getClosestPlayer: if target system is engaged use currentTarget directly (no FOV needed)
+-- otherwise fall back to FOV-based closest
 local function getClosestPlayer()
+    -- If target system is active and has a target, always use that
+    if fakePresenceActive and currentTarget and currentTarget.Character and currentTarget.Character:FindFirstChild("Head") then
+        return currentTarget
+    end
+    -- Normal FOV silent aim
+    if not library.flags["silent_aim_enabled"] then return nil end
     local closest, dist = nil, (library.flags["silent_aim_fov"] or 100)
     for _, v in pairs(players:GetPlayers()) do
         if v ~= localPlayer and v.Character and v.Character:FindFirstChild("Head") then
@@ -1957,18 +1969,22 @@ local function getClosestPlayer()
     return closest
 end
 
--- SILENT AIM
+-- SILENT AIM HOOK
 local oldIndex
 if hookmetamethod then
     oldIndex = hookmetamethod(game, "__index", function(self, index)
-        if not checkcaller() and library.flags["silent_aim_enabled"] then
-            if self == mouse and (index == "Hit" or index == "Target") then
-                local target = getClosestPlayer()
-                if target and target.Character and target.Character:FindFirstChild("Head") then
-                    if index == "Hit" then
-                        return target.Character.Head.CFrame
-                    elseif index == "Target" then
-                        return target.Character.Head
+        if not checkcaller() then
+            -- Always redirect when target engage is active regardless of silent_aim_enabled toggle
+            local shouldRedirect = (fakePresenceActive and currentTarget) or library.flags["silent_aim_enabled"]
+            if shouldRedirect then
+                if self == mouse and (index == "Hit" or index == "Target") then
+                    local target = getClosestPlayer()
+                    if target and target.Character and target.Character:FindFirstChild("Head") then
+                        if index == "Hit" then
+                            return target.Character.Head.CFrame
+                        elseif index == "Target" then
+                            return target.Character.Head
+                        end
                     end
                 end
             end
@@ -2362,7 +2378,6 @@ players.PlayerAdded:Connect(createHealthESP)
 -- Status display at bottom of screen
 -- Master switch: target_master
 -- ============================================================
-local currentTarget = nil
 local targetLine = Drawing.new("Line")
 targetLine.Visible = false
 targetLine.Thickness = 2
@@ -2384,10 +2399,7 @@ targetNameText.Outline = true
 targetNameText.Color = Color3.new(1, 1, 1)
 targetNameText.Center = true
 
-local fakePresenceActive = false
-local autokillActive = false
 local targetStatus = "VOID"
-local killLoopRunning = false
 
 local function setStatus(s)
     targetStatus = s
@@ -2456,51 +2468,113 @@ inputService.InputBegan:Connect(function(key, gpe)
     end
 end)
 
--- AUTOKILL / FAKE PRESENCE LOOP
+-- AUTOKILL / TARGET COMBAT LOOP
+-- Detects ammo from held tool (looks for IntValue/NumberValue named ammo/Ammo/currentAmmo etc)
+local function getAmmoInfo()
+    local char = getCharacter()
+    if not char then return nil, nil end
+    local tool = char:FindFirstChildOfClass("Tool")
+    if not tool then return nil, nil end
+    local ammo, maxAmmo = nil, nil
+    -- Search entire tool tree for ammo-like values
+    for _, v in pairs(tool:GetDescendants()) do
+        if v:IsA("IntValue") or v:IsA("NumberValue") then
+            local n = v.Name:lower()
+            if n == "ammo" or n == "currentammo" or n == "bullets" or n == "clip" or n == "magazine" then
+                ammo = v.Value
+            end
+            if n == "maxammo" or n == "maxbullets" or n == "clipsize" or n == "magazinesize" or n == "maxclip" then
+                maxAmmo = v.Value
+            end
+        end
+    end
+    return ammo, maxAmmo
+end
+
+local isReloading = false
+local orbitAngle = 0
+
 task.spawn(function()
     while task.wait() do
-        if not library.flags["target_master"] then task.wait(0.5) continue end
+        if not library.flags["target_master"] then task.wait(0.1) continue end
         if not fakePresenceActive or not currentTarget then continue end
 
         local tChar = currentTarget.Character
-        local myChar = getCharacter()
         local myRoot = getRoot()
         if not tChar or not myRoot then continue end
         local tHRP = tChar:FindFirstChild("HumanoidRootPart")
         local tHum = tChar:FindFirstChildOfClass("Humanoid")
+
+        -- Target died
         if not tHRP or not tHum or tHum.Health <= 0 then
             setStatus("VOID")
             currentTarget = nil
             fakePresenceActive = false
-            autokillActive = false
+            isReloading = false
+            continue
+        end
+
+        -- Check ammo
+        local ammo, maxAmmo = getAmmoInfo()
+        local needsReload = ammo ~= nil and ammo <= 0
+
+        if needsReload and not isReloading then
+            isReloading = true
+            setStatus("RELOADING")
+            -- Press R to reload
+            local ris = game:GetService("VirtualInputManager") or nil
+            if fireclickdetector then end -- executor check
+            -- Use keypress to simulate R
+            if keypress and keyrelease then
+                keypress(0x52) -- R key
+                task.wait(0.1)
+                keyrelease(0x52)
+            end
+            -- Wait for ammo to refill or timeout
+            local waited = 0
+            while waited < 4 do
+                task.wait(0.1)
+                waited += 0.1
+                local a, _ = getAmmoInfo()
+                if a == nil or a > 0 then break end
+            end
+            isReloading = false
+            setStatus("KILLING")
+            continue
+        end
+
+        if isReloading then
+            setStatus("RELOADING")
             continue
         end
 
         setStatus("KILLING")
 
-        -- Strafe around target at close range
-        local angle = tick() * 3
-        local radius = 6
-        local strafePos = tHRP.Position + Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
-        myRoot.CFrame = CFrame.new(strafePos, tHRP.Position)
+        -- INSANE speed orbit - random angle jumps so he cant predict
+        -- Not a smooth circle - teleports to random positions around target rapidly
+        orbitAngle = orbitAngle + (math.random(40, 120) * (math.random(2) == 1 and 1 or -1))
+        local radAngle = math.rad(orbitAngle)
+        local radius = math.random(3, 8)
+        local heightOffset = math.random(-2, 3)
+        local orbitPos = tHRP.Position + Vector3.new(
+            math.cos(radAngle) * radius,
+            heightOffset,
+            math.sin(radAngle) * radius
+        )
+        -- Teleport there and always face target
+        myRoot.CFrame = CFrame.new(orbitPos, tHRP.Position)
+        myRoot.AssemblyLinearVelocity = Vector3.zero
+        myRoot.AssemblyAngularVelocity = Vector3.zero
 
-        -- Shoot via mouse1click aimed at target head (uses silent aim system)
-        task.wait(0.05)
+        -- Fire weapon (silent aim hook redirects to target head automatically)
         if library.flags["target_autokill"] then
-            setStatus("KILLING")
             if mouse1click then
                 mouse1click()
             elseif mouse1press and mouse1release then
                 mouse1press()
-                task.wait()
+                task.wait(0.01)
                 mouse1release()
             end
-        end
-
-        -- Brief reload pause simulation
-        if tick() % 3 < 0.1 then
-            setStatus("RELOADING")
-            task.wait(0.3)
         end
     end
 end)
