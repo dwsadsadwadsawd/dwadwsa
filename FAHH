@@ -44,8 +44,6 @@ pcall(function()
     library.notifyText.Position = Vector2.new(10,60)
 end)
 
-local camera = workspace.CurrentCamera
-
 function draggable(a)local b=inputService;local c;local d;local e;local f;local function g(h)if not library.colorpicking then local i=h.Position-e;a.Position=UDim2.new(f.X.Scale,f.X.Offset+i.X,f.Y.Scale,f.Y.Offset+i.Y)end end;a.InputBegan:Connect(function(h)if h.UserInputType==Enum.UserInputType.MouseButton1 or h.UserInputType==Enum.UserInputType.Touch then c=true;e=h.Position;f=a.Position;h.Changed:Connect(function()if h.UserInputState==Enum.UserInputState.End then c=false end end)end end)a.InputChanged:Connect(function(h)if h.UserInputType==Enum.UserInputType.MouseMovement or h.UserInputType==Enum.UserInputType.Touch then d=h end end)b.InputChanged:Connect(function(h)if h==d and c then g(h)end end)end
 draggable(menu.bg)
 
@@ -1901,29 +1899,18 @@ local function getClosestPlayer()
     return closest
 end
 
--- ============================================================
--- SILENT AIM - only redirects when a Tool is equipped
--- checkcaller() alone doesnt block Roblox camera scripts, so
--- we gate on Tool equipped which is when games actually read
--- mouse.Hit/Target for shooting. Camera never reads these.
--- ============================================================
+-- SILENT AIM
 local oldIndex
 if hookmetamethod then
     oldIndex = hookmetamethod(game, "__index", function(self, index)
         if not checkcaller() and library.flags["silent_aim_enabled"] then
             if self == mouse and (index == "Hit" or index == "Target") then
-                -- Only redirect if player has a tool equipped
-                -- Roblox camera system does NOT read mouse.Hit, weapon LocalScripts do
-                local char = getCharacter()
-                local hasTool = char and char:FindFirstChildOfClass("Tool") ~= nil
-                if hasTool then
-                    local target = getClosestPlayer()
-                    if target and target.Character and target.Character:FindFirstChild("Head") then
-                        if index == "Hit" then
-                            return target.Character.Head.CFrame
-                        elseif index == "Target" then
-                            return target.Character.Head
-                        end
+                local target = getClosestPlayer()
+                if target and target.Character and target.Character:FindFirstChild("Head") then
+                    if index == "Hit" then
+                        return target.Character.Head.CFrame
+                    elseif index == "Target" then
+                        return target.Character.Head
                     end
                 end
             end
