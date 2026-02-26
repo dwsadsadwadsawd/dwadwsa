@@ -122,7 +122,6 @@ function library:addTab(name)
 
     table.insert(library.tabbuttons,newButton)
     newButton.Parent = tabviewer
-    newButton.Modal = true
     newButton.Visible = true
     newButton.text.Text = name
     newButton.MouseButton1Click:Connect(function()
@@ -1816,7 +1815,7 @@ local function startFly()
         end
         
         -- Aggressive Physics Reset to stop drifting
-        cHum.PlatformStand = true
+        cHum:ChangeState(Enum.HumanoidStateType.Falling)
         cRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
         cRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
     end)
@@ -1862,7 +1861,7 @@ fovCircle.NumSides = 64
 fovCircle.Color = library.libColor
 
 runService.RenderStepped:Connect(function()
-    local mouseLoc = inputService:GetMouseLocation()
+    local mouseLoc = Vector2.new(mouse.X, mouse.Y + 36)
     local showFov = (library.flags["silent_aim_showfov"] or false) and (library.flags["silent_aim"] or false)
     local fovRadius = tonumber(library.flags["silent_aim_fov"] or 100)
     
