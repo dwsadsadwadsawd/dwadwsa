@@ -46,38 +46,31 @@ end)
 
 -- ============================================================
 -- FIRST PERSON MOUSE LOCK
--- Detects when camera is inside the character (first person)
--- and locks + centers the mouse exactly like vanilla Roblox does
+-- Forces lock every frame. Roblox resets MouseBehavior constantly
+-- so checking only on transition doesnt work - must enforce each frame.
 -- ============================================================
 local camera = workspace.CurrentCamera
-local isInFirstPerson = false
 
 local function isFirstPerson()
     local root = getRoot()
     if not root then return false end
-    -- Camera is considered first-person when it's within ~1 stud of the HRP
-    return (camera.CFrame.Position - root.Position).Magnitude < 1.5
+    local head = getCharacter() and getCharacter():FindFirstChild("Head")
+    local checkPos = head and head.Position or root.Position
+    return (camera.CFrame.Position - checkPos).Magnitude < 2.5
 end
 
 runService.RenderStepped:Connect(function()
     if menu.Enabled then
-        -- Menu is open: always free mouse, never lock
-        if inputService.MouseBehavior ~= Enum.MouseBehavior.Default then
-            inputService.MouseBehavior = Enum.MouseBehavior.Default
-        end
-        isInFirstPerson = false
+        inputService.MouseBehavior = Enum.MouseBehavior.Default
+        inputService.MouseIconEnabled = true
         return
     end
-
-    local fp = isFirstPerson()
-    if fp and not isInFirstPerson then
-        -- Just entered first person: lock and center mouse
+    if isFirstPerson() then
         inputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-        isInFirstPerson = true
-    elseif not fp and isInFirstPerson then
-        -- Just left first person: release mouse
+        inputService.MouseIconEnabled = false
+    else
         inputService.MouseBehavior = Enum.MouseBehavior.Default
-        isInFirstPerson = false
+        inputService.MouseIconEnabled = true
     end
 end)
 
