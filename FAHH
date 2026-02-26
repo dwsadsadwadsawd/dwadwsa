@@ -44,35 +44,7 @@ pcall(function()
     library.notifyText.Position = Vector2.new(10,60)
 end)
 
--- ============================================================
--- FIRST PERSON MOUSE LOCK
--- Forces lock every frame. Roblox resets MouseBehavior constantly
--- so checking only on transition doesnt work - must enforce each frame.
--- ============================================================
 local camera = workspace.CurrentCamera
-
-local function isFirstPerson()
-    local root = getRoot()
-    if not root then return false end
-    local head = getCharacter() and getCharacter():FindFirstChild("Head")
-    local checkPos = head and head.Position or root.Position
-    return (camera.CFrame.Position - checkPos).Magnitude < 2.5
-end
-
-runService.RenderStepped:Connect(function()
-    if menu.Enabled then
-        inputService.MouseBehavior = Enum.MouseBehavior.Default
-        inputService.MouseIconEnabled = true
-        return
-    end
-    if isFirstPerson() then
-        inputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-        inputService.MouseIconEnabled = false
-    else
-        inputService.MouseBehavior = Enum.MouseBehavior.Default
-        inputService.MouseIconEnabled = true
-    end
-end)
 
 function draggable(a)local b=inputService;local c;local d;local e;local f;local function g(h)if not library.colorpicking then local i=h.Position-e;a.Position=UDim2.new(f.X.Scale,f.X.Offset+i.X,f.Y.Scale,f.Y.Offset+i.Y)end end;a.InputBegan:Connect(function(h)if h.UserInputType==Enum.UserInputType.MouseButton1 or h.UserInputType==Enum.UserInputType.Touch then c=true;e=h.Position;f=a.Position;h.Changed:Connect(function()if h.UserInputState==Enum.UserInputState.End then c=false end end)end end)a.InputChanged:Connect(function(h)if h.UserInputType==Enum.UserInputType.MouseMovement or h.UserInputType==Enum.UserInputType.Touch then d=h end end)b.InputChanged:Connect(function(h)if h==d and c then g(h)end end)end
 draggable(menu.bg)
@@ -1930,22 +1902,28 @@ local function getClosestPlayer()
 end
 
 -- ============================================================
--- FIXED SILENT AIM - no CameraType enum, pure distance check
--- Silent aim ALWAYS active when enabled (works in first person too)
--- Mouse lock in first person is handled by Roblox engine itself,
--- not by this script - so we just let silent aim run regardless.
+-- SILENT AIM - only redirects when a Tool is equipped
+-- checkcaller() alone doesnt block Roblox camera scripts, so
+-- we gate on Tool equipped which is when games actually read
+-- mouse.Hit/Target for shooting. Camera never reads these.
 -- ============================================================
 local oldIndex
 if hookmetamethod then
     oldIndex = hookmetamethod(game, "__index", function(self, index)
         if not checkcaller() and library.flags["silent_aim_enabled"] then
             if self == mouse and (index == "Hit" or index == "Target") then
-                local target = getClosestPlayer()
-                if target and target.Character and target.Character:FindFirstChild("Head") then
-                    if index == "Hit" then
-                        return target.Character.Head.CFrame
-                    elseif index == "Target" then
-                        return target.Character.Head
+                -- Only redirect if player has a tool equipped
+                -- Roblox camera system does NOT read mouse.Hit, weapon LocalScripts do
+                local char = getCharacter()
+                local hasTool = char and char:FindFirstChildOfClass("Tool") ~= nil
+                if hasTool then
+                    local target = getClosestPlayer()
+                    if target and target.Character and target.Character:FindFirstChild("Head") then
+                        if index == "Hit" then
+                            return target.Character.Head.CFrame
+                        elseif index == "Target" then
+                            return target.Character.Head
+                        end
                     end
                 end
             end
