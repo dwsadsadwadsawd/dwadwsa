@@ -1780,6 +1780,18 @@ local function getCharacter() return localPlayer.Character end
 local function getRoot() return getCharacter() and (getCharacter():FindFirstChild("HumanoidRootPart") or getCharacter():FindFirstChild("Torso")) end
 local function getHumanoid() return getCharacter() and getCharacter():FindFirstChildOfClass("Humanoid") end
 
+-- FIRST PERSON MOUSE LOCK
+runService.RenderStepped:Connect(function()
+    local root = getRoot()
+    if not root then return end
+    local camDist = (workspace.CurrentCamera.CFrame.Position - root.Position).Magnitude
+    if camDist < 1 and not menu.Enabled then
+        inputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+    else
+        inputService.MouseBehavior = Enum.MouseBehavior.Default
+    end
+end)
+
 local function startFly()
     if not library.flags["fly_enabled"] then return end
     local root = getRoot()
