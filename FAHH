@@ -1849,17 +1849,30 @@ task.spawn(function()
 end)
 
 -- FOV CIRCLE
+local fovCircleOutline = Drawing.new("Circle")
+fovCircleOutline.Visible = false
+fovCircleOutline.Thickness = 3
+fovCircleOutline.NumSides = 64
+fovCircleOutline.Color = Color3.new(0,0,0)
+
 local fovCircle = Drawing.new("Circle")
 fovCircle.Visible = false
 fovCircle.Thickness = 1
 fovCircle.NumSides = 64
-fovCircle.Radius = library.flags["silent_aim_fov"] or 100
 fovCircle.Color = library.libColor
 
 runService.RenderStepped:Connect(function()
-    fovCircle.Visible = (library.flags["silent_aim_showfov"] or false) and (library.flags["silent_aim"] or false)
-    fovCircle.Radius = tonumber(library.flags["silent_aim_fov"] or 100)
-    fovCircle.Position = Vector2.new(mouse.X, mouse.Y + 36)
+    local mouseLoc = inputService:GetMouseLocation()
+    local showFov = (library.flags["silent_aim_showfov"] or false) and (library.flags["silent_aim"] or false)
+    local fovRadius = tonumber(library.flags["silent_aim_fov"] or 100)
+    
+    fovCircleOutline.Visible = showFov
+    fovCircleOutline.Radius = fovRadius
+    fovCircleOutline.Position = mouseLoc
+    
+    fovCircle.Visible = showFov
+    fovCircle.Radius = fovRadius
+    fovCircle.Position = mouseLoc
     fovCircle.Color = library.libColor
 end)
 
