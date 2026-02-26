@@ -1810,11 +1810,15 @@ local function startFly()
         if inputService:IsKeyDown(Enum.KeyCode.S) then move -= camera.CFrame.LookVector end
         if inputService:IsKeyDown(Enum.KeyCode.A) then move -= camera.CFrame.RightVector end
         if inputService:IsKeyDown(Enum.KeyCode.D) then move += camera.CFrame.RightVector end
-        
-        if move.Magnitude > 0 then
-            cRoot.CFrame = cRoot.CFrame + (move * speed)
+
+        local newPos = cRoot.Position + (move * speed)
+        local lookAt = Vector3.new(camera.CFrame.LookVector.X, 0, camera.CFrame.LookVector.Z)
+        if lookAt.Magnitude > 0 then
+            cRoot.CFrame = CFrame.new(newPos, newPos + lookAt)
+        else
+            cRoot.CFrame = CFrame.new(newPos)
         end
-        
+
         cRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
         cRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
     end)
@@ -2193,3 +2197,315 @@ aG2:addSlider({text = "Animation Speed", flag = "anim_speed", min = 0, max = 10,
 end})
 
 library:notify("Lethal.xyz Loaded - Press RSHIFT to toggle")
+
+-- ============================================================
+-- HEALTH ESP
+-- Red = low health, Green = full health gradient per player
+-- ============================================================
+local function createHealthESP(plr)
+    local healthBar = Drawing.new("Square")
+    healthBar.Visible = false
+    healthBar.Filled = true
+    healthBar.Thickness = 1
+
+    local healthBarBg = Drawing.new("Square")
+    healthBarBg.Visible = false
+    healthBarBg.Filled = true
+    healthBarBg.Color = Color3.new(0,0,0)
+    healthBarBg.Thickness = 1
+
+    runService.RenderStepped:Connect(function()
+        if not library.flags["esp_health"] or not plr.Character then
+            healthBar.Visible = false
+            healthBarBg.Visible = false
+            return
+        end
+        local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+        local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+        if not hum or not hrp or hum.Health <= 0 then
+            healthBar.Visible = false
+            healthBarBg.Visible = false
+            return
+        end
+        local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
+        if not onScreen then
+            healthBar.Visible = false
+            healthBarBg.Visible = false
+            return
+        end
+
+        local char = plr.Character
+        local minX, minY, maxX, maxY = math.huge, math.huge, -math.huge, -math.huge
+        for _, v in pairs(char:GetChildren()) do
+            if v:IsA("BasePart") and v.Transparency < 1 then
+                local cf, size = v.CFrame, v.Size
+                for _, corner in pairs({
+                    cf*CFrame.new(-size.X/2,-size.Y/2,-size.Z/2), cf*CFrame.new(size.X/2,-size.Y/2,-size.Z/2),
+                    cf*CFrame.new(-size.X/2,size.Y/2,-size.Z/2),  cf*CFrame.new(size.X/2,size.Y/2,-size.Z/2),
+                    cf*CFrame.new(-size.X/2,-size.Y/2,size.Z/2),  cf*CFrame.new(size.X/2,-size.Y/2,size.Z/2),
+                    cf*CFrame.new(-size.X/2,size.Y/2,size.Z/2),   cf*CFrame.new(size.X/2,size.Y/2,size.Z/2)
+                }) do
+                    local p = workspace.CurrentCamera:WorldToViewportPoint(corner.Position)
+                    minX = math.min(minX, p.X) minY = math.min(minY, p.Y)
+                    maxX = math.max(maxX, p.X) maxY = math.max(maxY, p.Y)
+                end
+            end
+        end
+
+        local boxH = maxY - minY
+        local barW = 3
+        local barX = minX - 6
+        local hpRatio = hum.Health / hum.MaxHealth
+        -- Red to Green gradient based on health
+        local barColor = Color3.new(1 - hpRatio, hpRatio, 0)
+
+        healthBarBg.Visible = true
+        healthBarBg.Size = Vector2.new(barW, boxH + 2)
+        healthBarBg.Position = Vector2.new(barX - 1, minY - 1)
+
+        healthBar.Visible = true
+        healthBar.Color = barColor
+        healthBar.Size = Vector2.new(barW, boxH * hpRatio)
+        healthBar.Position = Vector2.new(barX, minY + (boxH * (1 - hpRatio)))
+    end)
+end
+
+for _, v in pairs(players:GetPlayers()) do
+    if v ~= localPlayer then createHealthESP(v) end
+end
+players.PlayerAdded:Connect(createHealthESP)
+
+-- ============================================================
+-- TARGET SYSTEM
+-- Q = set target, E = fake presence (teleport/strafe loop)
+-- Line from local left hand to target with red/black gradient
+-- Status display at bottom of screen
+-- Master switch: target_master
+-- ============================================================
+local currentTarget = nil
+local targetLine = Drawing.new("Line")
+targetLine.Visible = false
+targetLine.Thickness = 2
+targetLine.Transparency = 1
+
+local statusText = Drawing.new("Text")
+statusText.Visible = false
+statusText.Font = 2
+statusText.Size = 18
+statusText.Outline = true
+statusText.Color = Color3.new(1, 0, 0)
+statusText.Center = true
+
+local targetNameText = Drawing.new("Text")
+targetNameText.Visible = false
+targetNameText.Font = 2
+targetNameText.Size = 14
+targetNameText.Outline = true
+targetNameText.Color = Color3.new(1, 1, 1)
+targetNameText.Center = true
+
+local fakePresenceActive = false
+local autokillActive = false
+local targetStatus = "VOID"
+local killLoopRunning = false
+
+local function setStatus(s)
+    targetStatus = s
+end
+
+-- Gradient line: draws multiple segments red -> black
+local gradientSegments = {}
+for i = 1, 8 do
+    local seg = Drawing.new("Line")
+    seg.Visible = false
+    seg.Thickness = 2
+    seg.Transparency = 1
+    local t = (i-1)/7
+    seg.Color = Color3.new(1 - t, 0, 0) -- red to black
+    table.insert(gradientSegments, seg)
+end
+
+local function clearTarget()
+    currentTarget = nil
+    fakePresenceActive = false
+    autokillActive = false
+    killLoopRunning = false
+    setStatus("VOID")
+    targetLine.Visible = false
+    targetNameText.Visible = false
+    for _, seg in pairs(gradientSegments) do seg.Visible = false end
+end
+
+-- Q to set target = closest player to crosshair
+inputService.InputBegan:Connect(function(key, gpe)
+    if gpe then return end
+    if not library.flags["target_master"] then return end
+
+    if key.KeyCode == (library.flags["target_set_kb"] or Enum.KeyCode.Q) then
+        -- find closest to center screen
+        local vp = workspace.CurrentCamera.ViewportSize
+        local center = Vector2.new(vp.X/2, vp.Y/2)
+        local closest, closestDist = nil, math.huge
+        for _, plr in pairs(players:GetPlayers()) do
+            if plr ~= localPlayer and plr.Character and plr.Character:FindFirstChild("Head") then
+                local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(plr.Character.Head.Position)
+                if onScreen then
+                    local d = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+                    if d < closestDist then closest = plr closestDist = d end
+                end
+            end
+        end
+        if closest then
+            currentTarget = closest
+            setStatus("TARGET: " .. closest.Name)
+            library:notify("Target set: " .. closest.Name)
+        end
+    end
+
+    -- E = toggle fake presence / combat loop
+    if key.KeyCode == (library.flags["target_engage_kb"] or Enum.KeyCode.E) then
+        if not currentTarget then library:notify("No target set") return end
+        fakePresenceActive = not fakePresenceActive
+        if fakePresenceActive then
+            setStatus("ENGAGING")
+            autokillActive = true
+        else
+            setStatus("IDLE")
+            autokillActive = false
+        end
+    end
+end)
+
+-- AUTOKILL / FAKE PRESENCE LOOP
+task.spawn(function()
+    while task.wait() do
+        if not library.flags["target_master"] then task.wait(0.5) continue end
+        if not fakePresenceActive or not currentTarget then continue end
+
+        local tChar = currentTarget.Character
+        local myChar = getCharacter()
+        local myRoot = getRoot()
+        if not tChar or not myRoot then continue end
+        local tHRP = tChar:FindFirstChild("HumanoidRootPart")
+        local tHum = tChar:FindFirstChildOfClass("Humanoid")
+        if not tHRP or not tHum or tHum.Health <= 0 then
+            setStatus("VOID")
+            currentTarget = nil
+            fakePresenceActive = false
+            autokillActive = false
+            continue
+        end
+
+        setStatus("KILLING")
+
+        -- Strafe around target at close range
+        local angle = tick() * 3
+        local radius = 6
+        local strafePos = tHRP.Position + Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+        myRoot.CFrame = CFrame.new(strafePos, tHRP.Position)
+
+        -- Shoot via mouse1click aimed at target head (uses silent aim system)
+        task.wait(0.05)
+        if library.flags["target_autokill"] then
+            setStatus("KILLING")
+            if mouse1click then
+                mouse1click()
+            elseif mouse1press and mouse1release then
+                mouse1press()
+                task.wait()
+                mouse1release()
+            end
+        end
+
+        -- Brief reload pause simulation
+        if tick() % 3 < 0.1 then
+            setStatus("RELOADING")
+            task.wait(0.3)
+        end
+    end
+end)
+
+-- RENDER: gradient line + status text
+runService.RenderStepped:Connect(function()
+    -- Status text at bottom of screen
+    if library.flags["target_master"] then
+        local vp = workspace.CurrentCamera.ViewportSize
+        statusText.Visible = true
+        statusText.Position = Vector2.new(vp.X / 2, vp.Y - 40)
+        statusText.Text = "[ " .. targetStatus .. " ]"
+        statusText.Color = fakePresenceActive and Color3.new(1, 0, 0) or Color3.new(0.6, 0.6, 0.6)
+
+        if currentTarget and currentTarget.Character then
+            local tHead = currentTarget.Character:FindFirstChild("Head")
+            if tHead then
+                local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(tHead.Position)
+                targetNameText.Visible = onScreen
+                targetNameText.Position = Vector2.new(pos.X, pos.Y - 25)
+                targetNameText.Text = "► " .. currentTarget.Name .. " ◄"
+            end
+        else
+            targetNameText.Visible = false
+        end
+    else
+        statusText.Visible = false
+        targetNameText.Visible = false
+    end
+
+    -- Gradient line from local left hand to target head
+    if not library.flags["target_master"] or not library.flags["target_line"] or not currentTarget then
+        for _, seg in pairs(gradientSegments) do seg.Visible = false end
+        return
+    end
+    local myChar = getCharacter()
+    local tChar = currentTarget.Character
+    if not myChar or not tChar then
+        for _, seg in pairs(gradientSegments) do seg.Visible = false end
+        return
+    end
+    local leftHand = myChar:FindFirstChild("Left Arm") or myChar:FindFirstChild("LeftHand") or myChar:FindFirstChild("HumanoidRootPart")
+    local tHead = tChar:FindFirstChild("Head")
+    if not leftHand or not tHead then
+        for _, seg in pairs(gradientSegments) do seg.Visible = false end
+        return
+    end
+    local fromPos, fromOnScreen = workspace.CurrentCamera:WorldToViewportPoint(leftHand.Position)
+    local toPos, toOnScreen = workspace.CurrentCamera:WorldToViewportPoint(tHead.Position)
+    if not fromOnScreen or not toOnScreen then
+        for _, seg in pairs(gradientSegments) do seg.Visible = false end
+        return
+    end
+    local from2 = Vector2.new(fromPos.X, fromPos.Y)
+    local to2 = Vector2.new(toPos.X, toPos.Y)
+    local n = #gradientSegments
+    for i, seg in ipairs(gradientSegments) do
+        local t0 = (i-1)/n
+        local t1 = i/n
+        seg.Visible = true
+        seg.From = from2:Lerp(to2, t0)
+        seg.To   = from2:Lerp(to2, t1)
+    end
+end)
+
+-- ============================================================
+-- TARGET TAB UI
+-- ============================================================
+local targetTab = library:addTab("Target")
+
+local tG1 = targetTab:createGroup('left', 'Master')
+tG1:addToggle({text = "Target Master Switch", flag = "target_master", callback = function(s)
+    if not s then clearTarget() end
+end})
+tG1:addDivider()
+tG1:addToggle({text = "Show Target Line", flag = "target_line"})
+tG1:addKeybind({text = "Set Target", flag = "target_set_kb", key = Enum.KeyCode.Q})
+tG1:addKeybind({text = "Engage / Disengage", flag = "target_engage_kb", key = Enum.KeyCode.E})
+tG1:addButton({text = "Clear Target", callback = function() clearTarget() library:notify("Target cleared") end})
+
+local tG2 = targetTab:createGroup('left', 'Autokill')
+tG2:addToggle({text = "Autokill", flag = "target_autokill"})
+tG2:addDivider()
+
+-- ============================================================
+-- HEALTH ESP toggle in visuals tab
+-- ============================================================
+vG1:addToggle({text = "Health ESP", flag = "esp_health"})
