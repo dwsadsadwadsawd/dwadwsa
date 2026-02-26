@@ -1971,50 +1971,47 @@ local function createESP(plr)
                 if onScreen and (library.flags["esp_enabled"] or false) then
                     local dist = (workspace.CurrentCamera.CFrame.Position - hrp.Position).Magnitude
                     
-                    -- Pixel-Perfect Bounding Box Calculations
+                    -- Tight Vertical ESP Bounding Box
                     local char = plr.Character
-                    local cf, size = char:GetBoundingBox()
-                    local corners = {
-                        cf * CFrame.new(-size.X/2, -size.Y/2, -size.Z/2),
-                        cf * CFrame.new(size.X/2, -size.Y/2, -size.Z/2),
-                        cf * CFrame.new(-size.X/2, size.Y/2, -size.Z/2),
-                        cf * CFrame.new(size.X/2, size.Y/2, -size.Z/2),
-                        cf * CFrame.new(-size.X/2, -size.Y/2, size.Z/2),
-                        cf * CFrame.new(size.X/2, -size.Y/2, size.Z/2),
-                        cf * CFrame.new(-size.X/2, size.Y/2, size.Z/2),
-                        cf * CFrame.new(size.X/2, size.Y/2, size.Z/2)
-                    }
-
-                    local minX, minY, maxX, maxY = math.huge, math.huge, -math.huge, -math.huge
-                    for _, corner in pairs(corners) do
-                        local p, onS = workspace.CurrentCamera:WorldToViewportPoint(corner.Position)
-                        minX = math.min(minX, p.X)
-                        minY = math.min(minY, p.Y)
-                        maxX = math.max(maxX, p.X)
-                        maxY = math.max(maxY, p.Y)
-                    end
-
-                    local boxSize = Vector2.new(maxX - minX, maxY - minY)
-                    local boxPos = Vector2.new(minX, minY)
-
-                    boxOutline.Visible = (library.flags["esp_box"] or false)
-                    boxOutline.Size = boxSize
-                    boxOutline.Position = boxPos
+                    local head = char:FindFirstChild("Head")
+                    local root = char:FindFirstChild("HumanoidRootPart")
                     
-                    box.Visible = (library.flags["esp_box"] or false)
-                    box.Size = boxSize
-                    box.Position = boxPos
-                    box.Color = library.libColor
+                    if head and root then
+                        local headPos = workspace.CurrentCamera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.8, 0))
+                        local legPos = workspace.CurrentCamera:WorldToViewportPoint(root.Position - Vector3.new(0, 3, 0))
+                        
+                        local height = math.abs(headPos.Y - legPos.Y)
+                        local width = height / 1.5
+                        local boxSize = Vector2.new(width, height)
+                        local boxPos = Vector2.new(headPos.X - width/2, headPos.Y)
 
-                    name.Visible = (library.flags["esp_name"] or false)
-                    name.Text = plr.Name .. " [" .. math.floor(dist) .. "m]"
-                    name.Position = Vector2.new(minX + (maxX - minX) / 2, minY - 15)
+                        -- Perfect 1-pixel Manual Outline
+                        boxOutline.Visible = (library.flags["esp_box"] or false)
+                        boxOutline.Size = boxSize + Vector2.new(2, 2)
+                        boxOutline.Position = boxPos - Vector2.new(1, 1)
+                        boxOutline.Thickness = 1
+                        
+                        box.Visible = (library.flags["esp_box"] or false)
+                        box.Size = boxSize
+                        box.Position = boxPos
+                        box.Color = library.libColor
 
-                    tracer.Visible = (library.flags["esp_tracer"] or false)
-                    tracer.From = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y)
-                    tracer.To = Vector2.new(minX + (maxX - minX) / 2, maxY)
-                    tracer.Color = library.libColor
+                        name.Visible = (library.flags["esp_name"] or false)
+                        name.Text = plr.Name .. " [" .. math.floor(dist) .. "m]"
+                        name.Position = Vector2.new(boxPos.X + width/2, boxPos.Y - 15)
+
+                        tracer.Visible = (library.flags["esp_tracer"] or false)
+                        tracer.From = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y)
+                        tracer.To = Vector2.new(boxPos.X + width/2, boxPos.Y + height)
+                        tracer.Color = library.libColor
+                    else
+                        boxOutline.Visible = false
+                        box.Visible = false
+                        name.Visible = false
+                        tracer.Visible = false
+                    end
                 else
+                    boxOutline.Visible = false
                     box.Visible = false
                     name.Visible = false
                     tracer.Visible = false
