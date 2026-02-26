@@ -1907,29 +1907,23 @@ local function getClosestPlayer()
     return closest
 end
 
--- FIXED: Silent aim that doesn't break first-person camera
+-- FIXED: Silent aim with correct first-person detection
 local oldIndex
 if hookmetamethod then
     oldIndex = hookmetamethod(game, "__index", function(self, index)
         if not checkcaller() and library.flags["silent_aim_enabled"] then
-            -- Only override when in third-person
             if self == mouse and (index == "Hit" or index == "Target") then
-                -- Simple check: if camera is not following mouse in first-person, we can override
-                -- In first-person, the camera is typically very close to the character's head
                 local camera = workspace.CurrentCamera
-                local character = getCharacter()
-                local isFirstPerson = false
-                
-                if camera and character then
-                    local head = character:FindFirstChild("Head")
-                    if head then
-                        -- If camera is within 2 studs of head, it's probably first-person
-                        local distance = (camera.CFrame.Position - head.Position).Magnitude
-                        isFirstPerson = distance < 3
-                    end
-                end
-                
-                -- Only override if NOT in first-person
+                -- FIXED: LockFirstPerson doesn't exist; use correct enum name
+                -- Also check camera distance to HRP for first-person detection
+                local root = getRoot()
+                local camToChar = root and (camera.CFrame.Position - root.Position).Magnitude or math.huge
+
+                local isFirstPerson = camera and (
+                    camera.CameraType == Enum.CameraType.FirstPerson  -- correct enum value
+                    or camToChar < 1.5                                  -- HRP distance threshold
+                )
+
                 if not isFirstPerson then
                     local target = getClosestPlayer()
                     if target and target.Character and target.Character:FindFirstChild("Head") then
