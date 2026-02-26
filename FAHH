@@ -154,6 +154,8 @@ function library:addTab(name)
             layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
             layout.SortOrder = Enum.SortOrder.LayoutOrder
             layout.Padding = UDim.new(0, 10)
+            -- Ensure column expands
+            container.AutomaticSize = Enum.AutomaticSize.Y
         end
 
         groupbox.Parent = container
@@ -1799,10 +1801,12 @@ local function startFly()
         
         if move.Magnitude > 0 then
             root.CFrame = root.CFrame + (move * speed)
+            -- Keeps character in "falling" animation and prevents actual falling
+            root.Velocity = Vector3.new(0, -0.01, 0)
+        else
+            -- Perfectly stationary
+            root.Velocity = Vector3.new(0, 0, 0)
         end
-        
-        -- Keeps character in "falling" animation and prevents actual falling
-        root.Velocity = Vector3.new(0, -0.01, 0)
     end)
 end
 
@@ -1839,8 +1843,8 @@ fovCircle.Radius = library.flags["silent_aim_fov"] or 100
 fovCircle.Color = library.libColor
 
 runService.RenderStepped:Connect(function()
-    fovCircle.Visible = library.flags["silent_aim_showfov"] and (library.flags["silent_aim"] or false)
-    fovCircle.Radius = library.flags["silent_aim_fov"] or 100
+    fovCircle.Visible = (library.flags["silent_aim_showfov"] or false) and (library.flags["silent_aim"] or false)
+    fovCircle.Radius = tonumber(library.flags["silent_aim_fov"] or 100)
     fovCircle.Position = Vector2.new(mouse.X, mouse.Y + 36)
     fovCircle.Color = library.libColor
 end)
@@ -1930,22 +1934,22 @@ local function createESP(plr)
                 local hrp = plr.Character.HumanoidRootPart
                 local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
                 
-                if onScreen and library.flags["esp_enabled"] then
+                if onScreen and (library.flags["esp_enabled"] or false) then
                     local dist = (workspace.CurrentCamera.CFrame.Position - hrp.Position).Magnitude
                     local size = (workspace.CurrentCamera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0)).Y - workspace.CurrentCamera:WorldToViewportPoint(hrp.Position + Vector3.new(0, 2.6, 0)).Y)
                     local boxSize = Vector2.new(size * 0.6, size)
                     local boxPos = Vector2.new(pos.X - boxSize.X / 2, pos.Y - boxSize.Y / 2)
 
-                    box.Visible = library.flags["esp_box"]
+                    box.Visible = (library.flags["esp_box"] or false)
                     box.Size = boxSize
                     box.Position = boxPos
                     box.Color = library.libColor
 
-                    name.Visible = library.flags["esp_name"]
+                    name.Visible = (library.flags["esp_name"] or false)
                     name.Text = plr.Name .. " [" .. math.floor(dist) .. "m]"
                     name.Position = Vector2.new(pos.X, pos.Y - boxSize.Y / 2 - 15)
 
-                    tracer.Visible = library.flags["esp_tracer"]
+                    tracer.Visible = (library.flags["esp_tracer"] or false)
                     tracer.From = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y)
                     tracer.To = Vector2.new(pos.X, pos.Y + boxSize.Y / 2)
                     tracer.Color = library.libColor
