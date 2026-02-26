@@ -1791,6 +1791,8 @@ local function startFly()
     local root = getRoot()
     local hum = getHumanoid()
     if not root or not hum then return end
+    -- Disable falling animation
+    hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, false)
     
     -- Non-smooth, animation-friendly Fly
     library.flyC = runService.Heartbeat:Connect(function()
@@ -1823,7 +1825,10 @@ end
 local function stopFly()
     if library.flyC then library.flyC:Disconnect() library.flyC = nil end
     local hum = getHumanoid()
-    if hum then hum.PlatformStand = false end
+    if hum then 
+        hum.PlatformStand = false 
+        hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+    end
 end
 
 local function toggleNoclip()
