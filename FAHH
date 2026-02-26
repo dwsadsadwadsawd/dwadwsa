@@ -23,6 +23,19 @@ menu.bg.Position     = UDim2.new(0.5,-menu.bg.Size.X.Offset/2,0.5,-menu.bg.Size.
 menu.bg.pre.Text = 'Lethal<font color="#ff0000">.xyz</font> - Rage Edition'
 local library = {cheatname = "Lethal";ext = ".xyz";gamename = "Rage Edition";colorpicking = false;tabbuttons = {};tabs = {};options = {};flags = {};scrolling = false;playing = false;multiZindex = 200;toInvis = {};libColor = Color3.fromRGB(255, 0, 0);disabledcolor = Color3.fromRGB(150, 0, 0);blacklisted = {Enum.KeyCode.W,Enum.KeyCode.A,Enum.KeyCode.S,Enum.KeyCode.D,Enum.UserInputType.MouseMovement}}
 
+-- Helper Functions
+local function getCharacter()
+    return localPlayer.Character
+end
+
+local function getHumanoid()
+    return getCharacter() and getCharacter():FindFirstChildOfClass("Humanoid")
+end
+
+local function getRoot()
+    return getCharacter() and getCharacter():FindFirstChild("HumanoidRootPart")
+end
+
 pcall(function()
     library.notifyText = Drawing.new("Text")
     library.notifyText.Font = 2
@@ -204,7 +217,7 @@ function library:addTab(name)
         backframe.Position = UDim2.new(0, 10, 0, -2)
         backframe.Size = UDim2.new(0, 13 + title.TextBounds.X, 0, 3)
 
-        local group = {}
+        local group = {grouper = grouper}
         function group:addToggle(args)
             if not args.flag and args.text then args.flag = args.text end
             if not args.flag then return warn("⚠️ incorrect arguments ⚠️ - missing args on recent toggle") end
@@ -1846,7 +1859,7 @@ end)
 
 -- SILENT AIM LOGIC
 local function getClosestPlayer()
-    local closest, dist = nil, (library.flags["silent_aim_fov"] or 100) -- Use FOV as max dist
+    local closest, dist = nil, (library.flags["silent_aim_fov"] or 100)
     for _, v in pairs(players:GetPlayers()) do
         if v ~= localPlayer and v.Character and v.Character:FindFirstChild("Head") then
             local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(v.Character.Head.Position)
@@ -1857,6 +1870,9 @@ local function getClosestPlayer()
                     dist = diff
                 end
             end
+        end
+    end
+    return closest
 end
 
 -- ANIMATION LOGIC
@@ -1975,6 +1991,7 @@ local function createESP(plr)
                         box.Size = boxSize
                         box.Position = boxPos
                         box.Color = library.libColor
+                    end
 
                     name.Visible = (library.flags["esp_name"] or false)
                     name.Text = plr.Name .. " [" .. math.floor(dist) .. "m]"
@@ -2027,7 +2044,7 @@ local vG2 = visualsTab:createGroup('right', 'Preview')
 local previewFrame = Instance.new("ViewportFrame")
 previewFrame.Size = UDim2.new(0, 200, 0, 250)
 previewFrame.BackgroundTransparency = 1
-previewFrame.Parent = vG2.Parent -- Parenting to the grouper container
+previewFrame.Parent = vG2.grouper -- Now refers to the actual Frame
 
 -- VIEWPORT LOGIC
 local function updatePreview()
