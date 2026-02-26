@@ -1907,30 +1907,29 @@ local function getClosestPlayer()
     return closest
 end
 
+-- FIXED: Silent aim that doesn't break first-person camera
 local oldIndex
 if hookmetamethod then
     oldIndex = hookmetamethod(game, "__index", function(self, index)
         if not checkcaller() and library.flags["silent_aim_enabled"] then
-            -- Only override when in third-person or when specifically forced
+            -- Only override when in third-person
             if self == mouse and (index == "Hit" or index == "Target") then
-                -- Check if we're in first-person by looking at camera mode and relative position
+                -- Simple check: if camera is not following mouse in first-person, we can override
+                -- In first-person, the camera is typically very close to the character's head
                 local camera = workspace.CurrentCamera
-                local rootPart = getRoot()
-                
-                -- Better first-person detection:
-                -- 1. Camera mode is Custom or Scriptable (common in first-person games)
-                -- 2. Camera is very close to the character's head position
+                local character = getCharacter()
                 local isFirstPerson = false
-                if camera and rootPart then
-                    local head = getCharacter() and getCharacter():FindFirstChild("Head")
+                
+                if camera and character then
+                    local head = character:FindFirstChild("Head")
                     if head then
-                        local camToHead = (camera.CFrame.Position - head.Position).Magnitude
-                        -- If camera is within 3 studs of head, likely first-person
-                        isFirstPerson = camToHead < 3
+                        -- If camera is within 2 studs of head, it's probably first-person
+                        local distance = (camera.CFrame.Position - head.Position).Magnitude
+                        isFirstPerson = distance < 3
                     end
                 end
                 
-                -- Only override if NOT in first-person mode
+                -- Only override if NOT in first-person
                 if not isFirstPerson then
                     local target = getClosestPlayer()
                     if target and target.Character and target.Character:FindFirstChild("Head") then
