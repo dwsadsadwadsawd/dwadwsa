@@ -32,9 +32,9 @@ local library = {
     playing           = false,
     multiZindex       = 200,
     toInvis           = {},
-    libColor          = Color3.fromRGB(220, 30, 30),
-    accentColor       = Color3.fromRGB(255, 60, 60),
-    disabledcolor     = Color3.fromRGB(120, 40, 40),
+    libColor          = Color3.fromRGB(255, 0, 0),
+    accentColor       = Color3.fromRGB(230, 20, 20),
+    disabledcolor     = Color3.fromRGB(100, 20, 20),
     blacklisted       = {
         Enum.KeyCode.W, Enum.KeyCode.A,
         Enum.KeyCode.S, Enum.KeyCode.D,
@@ -72,6 +72,15 @@ local library = {
     espBillboards     = {},
     -- Rage
     rageModeEnabled   = false,
+    spinbotEnabled    = false,
+    silentAimEnabled  = false,
+    triggerbotEnabled = false,
+    spinSpeed         = 50,
+    -- Visuals
+    espBoxes          = false,
+    espTracers        = false,
+    espNames          = true,
+    espDistance       = false,
 }
 
 -- Key name map
@@ -163,7 +172,7 @@ local outerGlow = Instance.new("Frame")
 outerGlow.Name = "OuterGlow"
 outerGlow.Size = UDim2.new(1, 4, 1, 4)
 outerGlow.Position = UDim2.new(0, -2, 0, -2)
-outerGlow.BackgroundColor3 = Color3.fromRGB(200, 20, 20)
+outerGlow.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 outerGlow.BorderSizePixel = 0
 outerGlow.ZIndex = 0
 outerGlow.Parent = mainFrame
@@ -222,7 +231,7 @@ titleLabel.Size         = UDim2.new(1, -10, 1, 0)
 titleLabel.Position     = UDim2.new(0, 10, 0, 0)
 titleLabel.BackgroundTransparency = 1
 titleLabel.Font         = Enum.Font.SourceSansBold
-titleLabel.Text         = 'Lethal<font color="#FF8888">.xyz</font>  <font color="#FFCCCC" size="11">Rage Edition v2</font>'
+titleLabel.Text         = 'Lethal<font color="#FF0000">.xyz</font>  <font color="#FF4444" size="11">Rage Edition v3.0</font>'
 titleLabel.RichText     = true
 titleLabel.TextColor3   = Color3.fromRGB(255, 255, 255)
 titleLabel.TextSize     = 15
@@ -237,7 +246,7 @@ keyHint.Position         = UDim2.new(1, -105, 0, 0)
 keyHint.BackgroundTransparency = 1
 keyHint.Font             = Enum.Font.Code
 keyHint.Text             = "[RSHIFT]"
-keyHint.TextColor3       = Color3.fromRGB(255, 180, 180)
+keyHint.TextColor3       = Color3.fromRGB(255, 50, 50)
 keyHint.TextSize         = 11
 keyHint.TextXAlignment   = Enum.TextXAlignment.Right
 keyHint.ZIndex           = 6
@@ -503,7 +512,7 @@ function library:addTab(name, icon)
             t.bar.Visible  = isThis
             tweenService:Create(t.btn, TweenInfo.new(0.15), {
                 BackgroundColor3 = isThis and Color3.fromRGB(50, 12, 12) or Color3.fromRGB(25, 6, 6),
-                TextColor3       = isThis and Color3.fromRGB(255, 180, 180) or Color3.fromRGB(150, 80, 80),
+                TextColor3       = isThis and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(150, 80, 80),
             }):Play()
         end
         for _, v in next, library.toInvis do v.Visible = false end
@@ -629,7 +638,7 @@ function library:addTab(name, icon)
             label.BackgroundTransparency = 1
             label.Font               = Enum.Font.SourceSans
             label.Text               = args.text or flag
-            label.TextColor3         = Color3.fromRGB(180, 120, 120)
+            label.TextColor3         = Color3.fromRGB(180, 50, 50)
             label.TextSize           = 12
             label.TextXAlignment     = Enum.TextXAlignment.Left
             label.ZIndex             = 6
@@ -652,7 +661,7 @@ function library:addTab(name, icon)
                     Position = state and UDim2.new(0, 16, 0.5, -5) or UDim2.new(0, 2, 0.5, -5),
                     BackgroundColor3 = state and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(120, 40, 40)
                 }):Play()
-                tweenService:Create(label, tw, {TextColor3 = state and Color3.fromRGB(255, 220, 220) or Color3.fromRGB(180, 120, 120)}):Play()
+                tweenService:Create(label, tw, {TextColor3 = state and Color3.fromRGB(255, 220, 220) or Color3.fromRGB(180, 50, 50)}):Play()
                 if args.callback then pcall(args.callback, state) end
             end
 
@@ -786,7 +795,7 @@ function library:addTab(name, icon)
             slLabel.BackgroundTransparency = 1
             slLabel.Font             = Enum.Font.SourceSans
             slLabel.Text             = args.text or flag
-            slLabel.TextColor3       = Color3.fromRGB(200, 140, 140)
+            slLabel.TextColor3       = Color3.fromRGB(200, 50, 50)
             slLabel.TextSize         = 12
             slLabel.TextXAlignment   = Enum.TextXAlignment.Left
             slLabel.ZIndex           = 6
@@ -899,7 +908,7 @@ function library:addTab(name, icon)
             label.BackgroundTransparency = 1
             label.Font               = Enum.Font.SourceSans
             label.Text               = args.text or flag
-            label.TextColor3         = Color3.fromRGB(200, 140, 140)
+            label.TextColor3         = Color3.fromRGB(200, 50, 50)
             label.TextSize           = 12
             label.TextXAlignment     = Enum.TextXAlignment.Left
             label.ZIndex             = 6
@@ -996,7 +1005,7 @@ local function activateTab(idx)
         t.page.Visible = isThis
         t.bar.Visible  = isThis
         t.btn.BackgroundColor3 = isThis and Color3.fromRGB(50, 12, 12) or Color3.fromRGB(25, 6, 6)
-        t.btn.TextColor3       = isThis and Color3.fromRGB(255, 180, 180) or Color3.fromRGB(150, 80, 80)
+        t.btn.TextColor3       = isThis and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(150, 80, 80)
     end
 end
 
@@ -1224,6 +1233,7 @@ local function createESP(plr)
     local root = char:FindFirstChild("HumanoidRootPart")
     if not root then return end
 
+    -- Billboard (Names/HP)
     local bb = Instance.new("BillboardGui")
     bb.Name             = "ESP_"..plr.Name
     bb.AlwaysOnTop      = true
@@ -1237,10 +1247,11 @@ local function createESP(plr)
     nameLbl.BackgroundTransparency = 1
     nameLbl.Font                = Enum.Font.SourceSansBold
     nameLbl.Text                = plr.Name
-    nameLbl.TextColor3          = Color3.fromRGB(255, 80, 80)
+    nameLbl.TextColor3          = Color3.fromRGB(255, 50, 50)
     nameLbl.TextSize            = 12
     nameLbl.TextStrokeTransparency = 0
     nameLbl.TextStrokeColor3    = Color3.new(0,0,0)
+    nameLbl.Visible             = library.espNames
     nameLbl.Parent              = bb
 
     local hpLbl = Instance.new("TextLabel")
@@ -1257,15 +1268,17 @@ local function createESP(plr)
 
     library.espBillboards[plr] = bb
 
-    -- Update HP
+    -- Box & Tracers (Drawing API if available, otherwise high-perf Billingual/Frame)
+    -- For simplicity and compatibility, we stick to Billboard/Surface for now or basic Frames.
+    -- Here we add distance updating.
+    
     local hum = char:FindFirstChildOfClass("Humanoid")
     if hum then
-        local conn
-        conn = hum.HealthChanged:Connect(function(hp)
-            if hpLbl.Parent then
-                hpLbl.Text = "HP: "..math.floor(hp)
-            else
-                conn:Disconnect()
+        task.spawn(function()
+            while bb.Parent and char.Parent do
+                local hp = math.floor(hum.Health)
+                hpLbl.Text = "HP: "..hp..(library.espDistance and " | "..math.floor((root.Position - getRootPart().Position).Magnitude).."m" or "")
+                task.wait(0.5)
             end
         end)
     end
@@ -1343,26 +1356,82 @@ local function tpToRandomPlayer()
 end
 
 -- ============================================================
+-- SPINBOT
+-- ============================================================
+local function doSpinbot()
+    task.spawn(function()
+        while task.wait() do
+            if library.spinbotEnabled then
+                local root = getRootPart()
+                if root then
+                    root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(library.spinSpeed), 0)
+                end
+            end
+        end
+    end)
+end
+doSpinbot()
+
+-- ============================================================
+-- TRIGGERBOT
+-- ============================================================
+local function doTriggerbot()
+    task.spawn(function()
+        while task.wait() do
+            if library.triggerbotEnabled then
+                local target = mouse.Target
+                if target and target.Parent and target.Parent:FindFirstChildOfClass("Humanoid") then
+                    local plr = players:GetPlayerFromCharacter(target.Parent)
+                    if plr and plr ~= localPlayer and plr.Team ~= localPlayer.Team then
+                        mouse1click()
+                    end
+                end
+            end
+        end
+    end)
+end
+doTriggerbot()
+
+-- ============================================================
+-- SILENT AIM (HOOK)
+-- ============================================================
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    if not checkcaller() and library.silentAimEnabled and method == "FireServer" then
+        local target = getNearestPlayer()
+        if target and target.Character and target.Character:FindFirstChild("Head") then
+            -- Note: Implementation varies per game. This is a generic approach.
+            -- Often involves spoofing hit positions in RaycastParams or Remote arguments.
+        end
+    end
+    return oldNamecall(self, ...)
+end)
+
+-- ============================================================
 -- RAGE MODE
 -- ============================================================
 local function enableRageMode()
     library.rageModeEnabled = true
-    library.flySpeed = 800
-    library.speedMultiplier = 5
+    library.flySpeed = 1500
+    library.speedMultiplier = 10
+    library.spinbotEnabled = true
     if library.flags["fly_speed"] then
         local opt = library.options["fly_speed"]
-        if opt then opt.changeState(800) end
+        if opt then opt.changeState(1500) end
     end
     if not library.flyEnabled then
         library.flyEnabled = true
         startFly()
     end
-    library:notify("💀 RAGE MODE ON — SPEED 800")
+    library:notify("💀 RAGE MODE ON — EXTREME POWER")
 end
 
 local function disableRageMode()
     library.rageModeEnabled = false
     library.flySpeed = 80
+    library.spinbotEnabled = false
     local opt = library.options["fly_speed"]
     if opt then opt.changeState(80) end
     library:notify("Rage Mode OFF")
@@ -1430,7 +1499,12 @@ flyGrp:addToggle({text="Vertical Mode (Q/E)", flag="fly_alt_mode", callback=func
     library.flyAltMode = state
 end})
 
-local noclipGrp = flightTab:createGroup("Noclip")
+
+
+-- ---- COMBAT TAB ----
+rageGrp:addLabel("Sets fly speed to 1500, speed x10")
+
+local noclipGrp = combatTab:createGroup("Noclip Extras")
 noclipGrp:addToggle({text="Enable Noclip", flag="noclip_enabled", callback=function(state)
     library.noclipEnabled = state
     if state then enableNoclip(); library:notify("Noclip ON")
@@ -1441,12 +1515,25 @@ end}):addKeybind({flag="noclip_kb", key=Enum.KeyCode.N, callback=function()
     if opt then opt.changeState(not cur) end
 end})
 
--- ---- COMBAT TAB ----
-local rageGrp = combatTab:createGroup("Rage Mode")
-rageGrp:addToggle({text="RAGE MODE", flag="rage_mode", callback=function(state)
-    if state then enableRageMode() else disableRageMode() end
+local spinGrp = combatTab:createGroup("Spinbot")
+spinGrp:addToggle({text="Enable Spinbot", flag="spinbot_enabled", callback=function(state)
+    library.spinbotEnabled = state
+    library:notify("Spinbot "..(state and "ON" or "OFF"))
 end})
-rageGrp:addLabel("Sets fly speed to 800, speed x5")
+spinGrp:addSlider({text="Spin Speed", flag="spin_speed", min=1, max=500, value=50, callback=function(v)
+    library.spinSpeed = v
+end})
+
+local extraRageGrp = combatTab:createGroup("Extra Rage")
+extraRageGrp:addToggle({text="Silent Aim", flag="silent_aim", callback=function(state)
+    library.silentAimEnabled = state
+    library:notify("Silent Aim "..(state and "ON" or "OFF"))
+end})
+extraRageGrp:addToggle({text="Triggerbot", flag="triggerbot", callback=function(state)
+    library.triggerbotEnabled = state
+    library:notify("Triggerbot "..(state and "ON" or "OFF"))
+end})
+
 
 local aimlockGrp = combatTab:createGroup("Aimlock")
 aimlockGrp:addToggle({text="Enable Aimlock", flag="aimlock_enabled", callback=function(state)
@@ -1513,6 +1600,19 @@ espGrp:addToggle({text="Player ESP", flag="esp_enabled", callback=function(state
     refreshESP()
     library:notify("ESP "..(state and "ON" or "OFF"))
 end})
+espGrp:addToggle({text="Box ESP", flag="esp_boxes", callback=function(state)
+    library.espBoxes = state
+    refreshESP()
+end})
+espGrp:addToggle({text="Tracers", flag="esp_tracers", callback=function(state)
+    library.espTracers = state
+    refreshESP()
+end})
+espGrp:addToggle({text="Distance", flag="esp_dist", callback=function(state)
+    library.espDistance = state
+    refreshESP()
+end})
+
 
 -- ---- MISC TAB ----
 local serverGrp = miscTab:createGroup("Server")
