@@ -1801,15 +1801,19 @@ local function getClosestPlayer()
 end
 
 local oldIndex
-oldIndex = hookmetamethod(game, "__index", function(self, index)
-    if not checkcaller() and library.flags["silent_aim"] then
-        if self == mouse and (index == "Hit" or index == "Target") then
-            local target = getClosestPlayer()
-            if target and target.Character and target.Character:FindFirstChild("Head") then
-                return (index == "Hit" and target.Character.Head.CFrame or target.Character.Head)
+if hookmetamethod then
+    oldIndex = hookmetamethod(game, "__index", function(self, index)
+        if not checkcaller() and library.flags["silent_aim"] then
+            if self == mouse and (index == "Hit" or index == "Target") then
+                local target = getClosestPlayer()
+                if target and target.Character and target.Character:FindFirstChild("Head") then
+                    return (index == "Hit" and target.Character.Head.CFrame or target.Character.Head)
+                end
             end
         end
-    end
+        return oldIndex(self, index)
+    end)
+end
 -- TRIGGERBOT LOGIC
 task.spawn(function()
     while task.wait() do
@@ -1819,7 +1823,13 @@ task.spawn(function()
                 local plr = players:GetPlayerFromCharacter(target.Parent)
                 if plr ~= localPlayer and (plr.Team ~= localPlayer.Team or not library.flags["team_check"]) then
                     task.wait(library.flags["triggerbot_delay"] / 1000)
-                    if mouse1click then mouse1click() else mouse1press() task.wait() mouse1release() end
+                    if mouse1click then 
+                        mouse1click() 
+                    elseif mouse1press and mouse1release then 
+                        mouse1press() 
+                        task.wait() 
+                        mouse1release() 
+                    end
                 end
             end
         end
@@ -1828,6 +1838,7 @@ end)
 
 -- ESP LOGIC
 local function createESP(plr)
+    if not Drawing then return end
     local box = Drawing.new("Square")
     box.Visible = false
     box.Color = library.libColor
