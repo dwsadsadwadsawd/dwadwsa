@@ -1756,6 +1756,13 @@ end
 -- ============================================================
 -- BACKEND LOGIC (RAGE FEATURES)
 -- ============================================================
+-- Initialize defaults to prevent arithmetic errors
+library.flags["fly_speed"] = 150
+library.flags["spin_speed"] = 50
+library.flags["ws_val"] = 100
+library.flags["silent_aim_fov"] = 100
+library.flags["triggerbot_delay"] = 0
+
 local function getCharacter() return localPlayer.Character end
 local function getRoot() return getCharacter() and (getCharacter():FindFirstChild("HumanoidRootPart") or getCharacter():FindFirstChild("Torso")) end
 local function getHumanoid() return getCharacter() and getCharacter():FindFirstChildOfClass("Humanoid") end
@@ -1775,8 +1782,12 @@ local function startFly()
         if inputService:IsKeyDown(Enum.KeyCode.S) then move -= workspace.CurrentCamera.CFrame.LookVector end
         if inputService:IsKeyDown(Enum.KeyCode.A) then move -= workspace.CurrentCamera.CFrame.RightVector end
         if inputService:IsKeyDown(Enum.KeyCode.D) then move += workspace.CurrentCamera.CFrame.RightVector end
-        library.bv.Velocity = move.Unit * library.flags["fly_speed"]
-        if move.Magnitude == 0 then library.bv.Velocity = Vector3.zero end
+        
+        if move.Magnitude > 0 then
+            library.bv.Velocity = move.Unit * (library.flags["fly_speed"] or 150)
+        else
+            library.bv.Velocity = Vector3.zero
+        end
         library.bg.CFrame = workspace.CurrentCamera.CFrame
     end)
 end
@@ -1808,9 +1819,24 @@ task.spawn(function()
     end
 end)
 
+-- FOV CIRCLE
+local fovCircle = Drawing.new("Circle")
+fovCircle.Visible = false
+fovCircle.Thickness = 1
+fovCircle.NumSides = 64
+fovCircle.Radius = library.flags["silent_aim_fov"] or 100
+fovCircle.Color = library.libColor
+
+runService.RenderStepped:Connect(function()
+    fovCircle.Visible = library.flags["silent_aim_showfov"] and (library.flags["silent_aim"] or false)
+    fovCircle.Radius = library.flags["silent_aim_fov"] or 100
+    fovCircle.Position = Vector2.new(mouse.X, mouse.Y + 36)
+    fovCircle.Color = library.libColor
+end)
+
 -- SILENT AIM LOGIC
 local function getClosestPlayer()
-    local closest, dist = nil, 2000 -- Max distance
+    local closest, dist = nil, (library.flags["silent_aim_fov"] or 100) -- Use FOV as max dist
     for _, v in pairs(players:GetPlayers()) do
         if v ~= localPlayer and v.Character and v.Character:FindFirstChild("Head") then
             local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(v.Character.Head.Position)
@@ -1955,8 +1981,11 @@ rG1:addToggle({text = "Noclip", flag = "noclip_enabled", callback = toggleNoclip
 rG1:addToggle({text = "Speed Hack", flag = "speed_h", callback = function(s) if getHumanoid() then getHumanoid().WalkSpeed = s and library.flags["ws_val"] or 16 end end})
 rG1:addSlider({text = "WalkSpeed", flag = "ws_val", min = 16, max = 500, value = 100})
 
-local rG2 = rageTab:createGroup('right', 'Combat')
+local rG2 = rageTab:createGroup('left', 'Combat')
 rG2:addToggle({text = "Silent Aim", flag = "silent_aim"})
+rG2:addToggle({text = "Show FOV", flag = "silent_aim_showfov"})
+rG2:addSlider({text = "FOV Size", flag = "silent_aim_fov", min = 1, max = 800, value = 100})
+rG2:addDivider()
 rG2:addToggle({text = "Enable Spinbot", flag = "spin_enabled"})
 rG2:addSlider({text = "Spin Speed", flag = "spin_speed", min = 1, max = 500, value = 50})
 rG2:addDivider()
