@@ -282,11 +282,11 @@ function library:addTab(name)
             return end
 
             local state = false
-            function toggle(newState)
+            local function toggle(newState)
                 state = newState
                 library.flags[args.flag] = state
                 front.BackgroundColor3 = state and library.libColor or Color3.fromRGB(15,15,15)
-                front.BackgroundTransparency = state and 0 or 0 -- Pure color
+                front.BackgroundTransparency = 0 -- Pure Red
                 text.TextColor3 = state and Color3.fromRGB(244, 244, 244) or Color3.fromRGB(144, 144, 144)
                 if args.callback then
                     args.callback(state)
@@ -350,7 +350,7 @@ function library:addTab(name)
                         end
                     end
                     if not next and key == library.flags[args.flag] then
-                        toggle(not state)
+                        toggle(not state) -- Correctly calls the LOCAL toggle
                     end
                 end)
     
@@ -1799,7 +1799,7 @@ local function startFly()
         if move.Magnitude > 0 then
             root.CFrame = root.CFrame + (move * speed)
         end
-        -- Keeps character in "falling" animation and resets gravity drift
+        -- Reset velocity to zero to stop any falling/gravity drift
         root.Velocity = Vector3.new(0, 0, 0)
     end)
 end
