@@ -244,8 +244,7 @@ function library:addTab(name)
             tobble.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             tobble.BorderColor3 = Color3.fromRGB(0, 0, 0)
             tobble.BorderSizePixel = 3
-                        tobble.Position = UDim2.new(0.0299999993, 0, 0.272000015, 0)
-
+            tobble.Position = UDim2.new(0.0299999993, 0, 0.272000015, 0)
             tobble.Size = UDim2.new(0, 10, 0, 10)
             
             mid.Name = "mid"
@@ -277,7 +276,6 @@ function library:addTab(name)
             button.Name = "button"
             button.Parent = toggleframe
             button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-
             button.BackgroundTransparency = 1.000
             button.BorderSizePixel = 0
             button.Size = UDim2.new(0, 101, 1, 0)
@@ -297,7 +295,7 @@ function library:addTab(name)
                 state = newState
                 library.flags[args.flag] = state
                 front.BackgroundColor3 = state and library.libColor or Color3.fromRGB(15,15,15)
-                front.BackgroundTransparency = 0 -- Pure Red
+                front.BackgroundTransparency = 0
                 text.TextColor3 = state and Color3.fromRGB(244, 244, 244) or Color3.fromRGB(144, 144, 144)
                 if args.callback then
                     args.callback(state)
@@ -361,7 +359,7 @@ function library:addTab(name)
                         end
                     end
                     if not next and key == library.flags[args.flag] then
-                        toggle(not state) -- Correctly calls the LOCAL toggle
+                        toggle(not state)
                     end
                 end)
     
@@ -398,7 +396,7 @@ function library:addTab(name)
 
                 library.multiZindex -= 1
                 jigCount -= 1
-                topStuff -= 1 --args.second
+                topStuff -= 1
 
                 colorpicker.Parent = toggleframe
                 colorpicker.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -516,7 +514,7 @@ function library:addTab(name)
                 copy.TextSize = 14.000
                 copy.TextStrokeTransparency = 0.000
 
-                copy.MouseButton1Click:Connect(function() -- "  "..args.text or "  "..args.flag
+                copy.MouseButton1Click:Connect(function()
                     colorFrame.Visible = false
                 end)
 
@@ -759,7 +757,7 @@ function library:addTab(name)
 				else
 					fill:TweenSize(UDim2.new(0,1,1,0),Enum.EasingDirection.In,Enum.EasingStyle.Sine,0.01)
                 end
-                fill.BackgroundTransparency = 0 -- Fix pink look
+                fill.BackgroundTransparency = 0
                 valuetext.Text = value..sub
                 library.flags[args.flag] = value
                 if args.callback then
@@ -882,7 +880,6 @@ function library:addTab(name)
             text.TextStrokeTransparency = 0.000
             text.TextXAlignment = Enum.TextXAlignment.Left
 
-
             library.flags[args.flag] = args.value or ""
             library.options[args.flag] = {type = "textbox",changeState = function(text) box.Text = text end,skipflag = args.skipflag,oldargs = args}
         end
@@ -919,7 +916,6 @@ function library:addTab(name)
             if not args.flag or not args.values then return warn("⚠️ incorrect arguments ⚠️") end
             groupbox.Size += UDim2.new(0, 0, 0, 35)
             
---args.multiselect and "..." or ""
             library.multiZindex -= 1
 
             local list = Instance.new("Frame")
@@ -1463,7 +1459,7 @@ function library:addTab(name)
 
             hue.Name = "hue"
             hue.Parent = main_2
-                hue.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+            hue.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
             hue.BorderColor3 = Color3.fromRGB(0, 0, 0)
             hue.BorderSizePixel = 0
             hue.Size = UDim2.new(0, 20, 0, 100)
@@ -1774,7 +1770,6 @@ end
 -- ============================================================
 -- BACKEND LOGIC (RAGE FEATURES)
 -- ============================================================
--- Initialize defaults to prevent arithmetic errors
 library.flags["fly_speed"] = 150
 library.flags["spin_speed"] = 50
 library.flags["ws_val"] = 100
@@ -1790,7 +1785,6 @@ local function startFly()
     local root = getRoot()
     local hum = getHumanoid()
     if not root or not hum then return end
-    -- Disable falling animation
     hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, false)
     
     local bv = root:FindFirstChild("FlyBV") or Instance.new("BodyVelocity")
@@ -1799,7 +1793,6 @@ local function startFly()
     bv.Velocity = Vector3.new(0, 0, 0)
     bv.Parent = root
 
-    -- Non-smooth, animation-friendly Fly
     library.flyC = runService.Heartbeat:Connect(function()
         local cRoot = getRoot()
         local cHum = getHumanoid()
@@ -1821,7 +1814,6 @@ local function startFly()
             cRoot.CFrame = cRoot.CFrame + (move * speed)
         end
         
-        -- Aggressive Physics Reset to stop drifting
         cRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
         cRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
     end)
@@ -1889,7 +1881,7 @@ runService.RenderStepped:Connect(function()
     fovCircle.Color = library.libColor
 end)
 
--- SILENT AIM LOGIC - FIXED VERSION
+-- SILENT AIM
 local function getClosestPlayer()
     local closest, dist = nil, (library.flags["silent_aim_fov"] or 100)
     for _, v in pairs(players:GetPlayers()) do
@@ -1907,31 +1899,23 @@ local function getClosestPlayer()
     return closest
 end
 
--- FIXED: Silent aim with correct first-person detection
+-- ============================================================
+-- FIXED SILENT AIM - no CameraType enum, pure distance check
+-- Silent aim ALWAYS active when enabled (works in first person too)
+-- Mouse lock in first person is handled by Roblox engine itself,
+-- not by this script - so we just let silent aim run regardless.
+-- ============================================================
 local oldIndex
 if hookmetamethod then
     oldIndex = hookmetamethod(game, "__index", function(self, index)
         if not checkcaller() and library.flags["silent_aim_enabled"] then
             if self == mouse and (index == "Hit" or index == "Target") then
-                local camera = workspace.CurrentCamera
-                -- FIXED: LockFirstPerson doesn't exist; use correct enum name
-                -- Also check camera distance to HRP for first-person detection
-                local root = getRoot()
-                local camToChar = root and (camera.CFrame.Position - root.Position).Magnitude or math.huge
-
-                local isFirstPerson = camera and (
-                    camera.CameraType == Enum.CameraType.FirstPerson  -- correct enum value
-                    or camToChar < 1.5                                  -- HRP distance threshold
-                )
-
-                if not isFirstPerson then
-                    local target = getClosestPlayer()
-                    if target and target.Character and target.Character:FindFirstChild("Head") then
-                        if index == "Hit" then
-                            return target.Character.Head.CFrame
-                        elseif index == "Target" then
-                            return target.Character.Head
-                        end
+                local target = getClosestPlayer()
+                if target and target.Character and target.Character:FindFirstChild("Head") then
+                    if index == "Hit" then
+                        return target.Character.Head.CFrame
+                    elseif index == "Target" then
+                        return target.Character.Head
                     end
                 end
             end
@@ -1959,7 +1943,7 @@ local function stopAnimation()
     if activeAnim then activeAnim:Stop() activeAnim = nil end
 end
 
--- TRIGGERBOT LOGIC
+-- TRIGGERBOT
 task.spawn(function()
     while task.wait() do
         if library.flags["triggerbot_enabled"] then
@@ -2022,7 +2006,6 @@ local function createESP(plr)
                 if onScreen and (library.flags["esp_enabled"] or false) then
                     local dist = (workspace.CurrentCamera.CFrame.Position - hrp.Position).Magnitude
                     
-                    -- True Body Part ESP Calculation
                     local char = plr.Character
                     local minX, minY, maxX, maxY = math.huge, math.huge, -math.huge, -math.huge
                     local foundParts = false
@@ -2056,7 +2039,6 @@ local function createESP(plr)
                         local boxSize = Vector2.new(maxX - minX, maxY - minY)
                         local boxPos = Vector2.new(minX, minY)
 
-                        -- Perfect 1-pixel Manual Outline
                         boxOutline.Visible = (library.flags["esp_box"] or false)
                         boxOutline.Size = boxSize + Vector2.new(2, 2)
                         boxOutline.Position = boxPos - Vector2.new(1, 1)
@@ -2125,9 +2107,8 @@ local vG2 = visualsTab:createGroup('right', 'Preview')
 local previewFrame = Instance.new("ViewportFrame")
 previewFrame.Size = UDim2.new(0, 200, 0, 250)
 previewFrame.BackgroundTransparency = 1
-previewFrame.Parent = vG2.grouper -- Now refers to the actual Frame
+previewFrame.Parent = vG2.grouper
 
--- VIEWPORT LOGIC
 local function updatePreview()
     previewFrame:ClearAllChildren()
     local char = localPlayer.Character
@@ -2142,7 +2123,6 @@ local function updatePreview()
             previewFrame.CurrentCamera = cam
             cam.Parent = previewFrame
             
-            -- Preview Box
             local pBox = Instance.new("Frame", previewFrame)
             pBox.Size = UDim2.new(0, 100, 0, 180)
             pBox.Position = UDim2.new(0.5, -50, 0.5, -90)
